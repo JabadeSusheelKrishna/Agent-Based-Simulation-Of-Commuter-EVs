@@ -1,3 +1,5 @@
+import random
+
 # --- Model Classes ---
 
 class ChargingStation:

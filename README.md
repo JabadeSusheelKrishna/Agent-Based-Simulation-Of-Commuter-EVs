@@ -52,6 +52,11 @@ This project implements an **Agent-Based Model (ABM)** to simulate Electric Vehi
 git clone https://github.com/your-username/Agent-Based-Simulation-Of-Commuter-EVs.git
 cd Agent-Based-Simulation-Of-Commuter-EVs
 
+# install dependencies
+python3 -m venv newenv
+source newenv/bin/activate
+pip install -r requirements.txt
+
 # Run the simulation
 python3 main.py
 ```

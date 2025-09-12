@@ -1,3 +1,7 @@
+import math
+import random
+from configurations import AREA_BOUNDS
+
 # --- Helper Functions ---
 def haversine_distance(lat1, lon1, lat2, lon2):
     """Calculate the distance between two points on Earth in kilometers."""

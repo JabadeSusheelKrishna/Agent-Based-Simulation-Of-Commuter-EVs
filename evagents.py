@@ -1,3 +1,6 @@
+import random
+from functions import get_random_location, haversine_distance
+
 class EV_Agent:
     """Represents an EV commuter."""
     def __init__(self, agent_id):
