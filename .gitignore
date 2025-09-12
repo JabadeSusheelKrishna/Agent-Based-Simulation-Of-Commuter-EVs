@@ -1,2 +1,2 @@
-./projectenv
-./__pycache__
+projectenv
+__pycache__
