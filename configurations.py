@@ -1,9 +1,10 @@
 # --- Configuration ---
 # Coordinates for the Kondapur-Hitech City-Gachibowli corridor
 AREA_BOUNDS = {
-    "min_lat": 17.43, "max_lat": 17.46,
-    "min_lon": 78.33, "max_lon": 78.38
+    "min_lat": 17.4408298, "max_lat": 17.4677016,
+    "min_lon": 78.3461984, "max_lon": 78.3744127
 }
+
 
 # Simulation parameters
 NUM_EV_AGENTS = 50
