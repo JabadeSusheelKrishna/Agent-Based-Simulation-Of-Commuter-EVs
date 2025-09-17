@@ -1,0 +1,109 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "charging_point_8"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.35393747541642,
+          17.445144159683302
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "charging_point_3"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.36618744304704,
+          17.45895272152108
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "charging_point_4"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.36449433720969,
+          17.457540263354495
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "charging_point_5"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.37288526349094,
+          17.458519526802643
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "charging_point_6"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.3635187322552,
+          17.44970155567944
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "charging_point_7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.35648784716365,
+          17.44864774095296
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "charging_point_8"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.35393747541642,
+          17.445144159683302
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "charging_point_9"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.3681685500044,
+          17.44611738325513
+        ]
+      }
+    }
+  ]
+}
