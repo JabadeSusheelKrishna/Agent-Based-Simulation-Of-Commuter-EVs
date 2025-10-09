@@ -40,12 +40,12 @@ class ChargingStation:
         if agent not in self.queue:
             self.queue.append(agent)
     
-    def start_charging(self, agent: 'EVAgent') -> bool:
+    def start_charging(self, agent: 'EVAgent', current_sim_time: int = None) -> bool:
         """Start charging an agent if port is available"""
         if self.is_available():
             self.occupied_ports += 1
             self.charging_agents.append(agent)
-            agent.start_charging()
+            agent.start_charging(current_sim_time)
             return True
         return False
     
@@ -55,21 +55,25 @@ class ChargingStation:
             self.charging_agents.remove(agent)
             self.occupied_ports -= 1
             agent.finish_charging()
-            
-            # Start charging next agent in queue if available
-            if self.queue and self.is_available():
-                next_agent = self.queue.popleft()
-                self.start_charging(next_agent)
     
-    def update(self):
+    def process_queue(self, current_sim_time: int = None):
+        """Process waiting queue - separate method to handle timing properly"""
+        while self.queue and self.is_available():
+            next_agent = self.queue.popleft()
+            self.start_charging(next_agent, current_sim_time)
+    
+    def update(self, current_sim_time: int = None):
         """Update charging station state - process charging agents"""
         finished_agents = []
         for agent in self.charging_agents:
-            if agent.is_fully_charged():
+            if agent.is_fully_charged(current_sim_time):
                 finished_agents.append(agent)
         
         for agent in finished_agents:
             self.finish_charging(agent)
+        
+        # Process queue after finishing agents to maintain proper synchronization
+        self.process_queue(current_sim_time)
 
 class EVAgent:
     """Represents an EV commuter agent"""
@@ -94,37 +98,60 @@ class EVAgent:
         self.path = []
         self.path_index = 0
         self.charging_start_time = None
+        self.charging_start_sim_time = None  # Track simulation time when charging started
         self.schedule_offset = random.uniform(0, 60)  # Random start time offset in minutes
         
     def needs_charging(self) -> bool:
         """Check if agent needs to charge"""
         return self.current_battery < self.low_battery_threshold
     
-    def start_charging(self):
+    def start_charging(self, current_sim_time: int = None):
         """Start charging process"""
         self.state = "charging"
         self.charging_start_time = time.time()
+        self.charging_start_sim_time = current_sim_time
     
     def finish_charging(self):
         """Finish charging and resume journey"""
-        self.state = "commuting_to_office" if self.destination == self.office else "commuting_to_home"
+        # Resume the appropriate commuting state based on destination
+        if self.destination == self.office:
+            self.state = "commuting_to_office"
+        elif self.destination == self.home:
+            self.state = "commuting_to_home"
+        else:
+            # If no destination set, determine state based on current time and location
+            # Check if closer to home or office to determine appropriate state
+            distance_to_home = self.current_location.distance_to(self.home)
+            distance_to_office = self.current_location.distance_to(self.office)
+            
+            if distance_to_home < distance_to_office:
+                self.state = "at_home"
+            else:
+                self.state = "at_office"
+        
         self.charging_start_time = None
+        self.charging_start_sim_time = None
     
-    def is_fully_charged(self) -> bool:
+    def is_fully_charged(self, current_sim_time: int = None) -> bool:
         """Check if battery is fully charged or charging time is sufficient"""
-        if self.charging_start_time is None:
+        if self.charging_start_sim_time is None:
             return False
         
-        charging_time_hours = (time.time() - self.charging_start_time) / 3600
+        if current_sim_time is None:
+            return False
+            
+        charging_time_minutes = current_sim_time - self.charging_start_sim_time
+        charging_time_hours = charging_time_minutes / 60.0
         charge_added = charging_time_hours * self.charging_rate
         
-        # Charge to 80% or for at least 15 minutes (whichever comes first)
-        return (self.current_battery + charge_added >= 80.0) or (charging_time_hours >= 0.25)
+        # Charge to 80% or for at least 30 minutes of simulation time (whichever comes first)
+        return (self.current_battery + charge_added >= 80.0) or (charging_time_minutes >= 30)
     
-    def update_battery_after_charging(self):
+    def update_battery_after_charging(self, current_sim_time: int = None):
         """Update battery level after charging"""
-        if self.charging_start_time:
-            charging_time_hours = (time.time() - self.charging_start_time) / 3600
+        if self.charging_start_sim_time and current_sim_time:
+            charging_time_minutes = current_sim_time - self.charging_start_sim_time
+            charging_time_hours = charging_time_minutes / 60.0
             charge_added = charging_time_hours * self.charging_rate
             self.current_battery = min(100.0, self.current_battery + charge_added)
     
@@ -191,8 +218,8 @@ class EVAgent:
         
         # Handle charging state
         if self.state == "charging":
-            if self.is_fully_charged():
-                self.update_battery_after_charging()
+            if self.is_fully_charged(current_time_minutes):
+                self.update_battery_after_charging(current_time_minutes)
                 # Find the charging station and finish charging
                 for station in charging_stations:
                     if self in station.charging_agents:
@@ -204,14 +231,21 @@ class EVAgent:
         if self.state == "waiting_to_charge":
             return
         
-        # Schedule-based state transitions
+        # Schedule-based state transitions (handle multi-day simulation)
+        # Get time within current day (0-1439 minutes)
+        time_in_day = current_time_minutes % (24 * 60)
+        
         morning_commute_start = 8 * 60 + self.schedule_offset  # 8 AM + offset
         evening_commute_start = 17 * 60 + self.schedule_offset  # 5 PM + offset
         
+        # Handle schedule offset wrapping around midnight
+        morning_commute_start = morning_commute_start % (24 * 60)
+        evening_commute_start = evening_commute_start % (24 * 60)
+        
         # Morning commute: home to office
         if (self.state == "at_home" and 
-            current_time_minutes >= morning_commute_start and 
-            current_time_minutes < morning_commute_start + 120):  # 2-hour window
+            time_in_day >= morning_commute_start and 
+            time_in_day < morning_commute_start + 120):  # 2-hour window
             
             self.destination = self.office
             self.path = self.find_path_to_destination(self.destination)
@@ -220,8 +254,8 @@ class EVAgent:
         
         # Evening commute: office to home
         elif (self.state == "at_office" and 
-              current_time_minutes >= evening_commute_start and 
-              current_time_minutes < evening_commute_start + 120):  # 2-hour window
+              time_in_day >= evening_commute_start and 
+              time_in_day < evening_commute_start + 120):  # 2-hour window
             
             self.destination = self.home
             self.path = self.find_path_to_destination(self.destination)
@@ -235,7 +269,7 @@ class EVAgent:
                 nearest_station = self.find_nearest_charging_station(charging_stations)
                 if nearest_station:
                     if nearest_station.is_available():
-                        nearest_station.start_charging(self)
+                        nearest_station.start_charging(self, current_time_minutes)
                     else:
                         nearest_station.add_to_queue(self)
                         self.state = "waiting_to_charge"
@@ -359,7 +393,7 @@ class EVSimulation:
         
         # Update all charging stations
         for station in self.charging_stations:
-            station.update()
+            station.update(self.current_time)
         
         # Advance time
         self.current_time += self.simulation_speed

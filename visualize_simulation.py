@@ -4,13 +4,15 @@ import networkx as nx
 from ev_simulation import EVSimulation
 import numpy as np
 
+agents_count = 40
+
 def visualize_network_and_stations():
     """Create a visualization of the road network and charging stations"""
     # Load the simulation
     sim = EVSimulation('roads.geojson', 'charging_points.geojson')
     
     # Create agents to get home and office locations
-    sim.create_agents(20)
+    sim.create_agents(agents_count)
     
     # Create figure with subplots
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
@@ -81,7 +83,7 @@ def visualize_network_and_stations():
 def run_and_visualize_simulation():
     """Run simulation and create time-series visualizations"""
     sim = EVSimulation('roads.geojson', 'charging_points.geojson')
-    sim.create_agents(20)
+    sim.create_agents(agents_count)
     
     # Store simulation data
     time_data = []
@@ -128,7 +130,7 @@ def run_and_visualize_simulation():
     ax1.set_ylabel('Number of Agents')
     ax1.legend()
     ax1.grid(True, alpha=0.3)
-    ax1.set_xlim(0, 24)
+    ax1.set_xlim(0, duration_hours)
     
     # Plot 2: Battery Levels
     ax2.plot(hours, avg_battery, label='Average Battery', color='green', linewidth=3)
@@ -140,7 +142,7 @@ def run_and_visualize_simulation():
     ax2.set_ylabel('Battery Level (%)')
     ax2.legend()
     ax2.grid(True, alpha=0.3)
-    ax2.set_xlim(0, 24)
+    ax2.set_xlim(0, duration_hours)
     ax2.set_ylim(0, 100)
     
     # Plot 3: Low Battery Agents
@@ -149,7 +151,7 @@ def run_and_visualize_simulation():
     ax3.set_xlabel('Time (Hours)')
     ax3.set_ylabel('Number of Agents')
     ax3.grid(True, alpha=0.3)
-    ax3.set_xlim(0, 24)
+    ax3.set_xlim(0, duration_hours)
     
     # Plot 4: Charging Infrastructure Utilization
     utilization = [occ/total * 100 if total > 0 else 0 for occ, total in zip(occupied_ports, total_ports)]
@@ -165,7 +167,7 @@ def run_and_visualize_simulation():
     ax4.legend(loc='upper left')
     ax4_twin.legend(loc='upper right')
     ax4.grid(True, alpha=0.3)
-    ax4.set_xlim(0, 24)
+    ax4.set_xlim(0, duration_hours)
     
     plt.tight_layout()
     plt.savefig('simulation_results.png', dpi=300, bbox_inches='tight')

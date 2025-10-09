@@ -78,11 +78,11 @@ class AnimatedSimulation:
                                      fontsize=10, verticalalignment='top',
                                      bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
     
-    def run_simulation_and_capture(self, duration_hours: int = 12, capture_interval: int = 30):
+    def run_simulation_and_capture(self, duration_days: int = 1, capture_interval: int = 30):
         """Run simulation and capture snapshots"""
-        duration_minutes = duration_hours * 60
+        duration_minutes = duration_days * 24 * 60  # Convert days to minutes
         
-        print(f"Running simulation for {duration_hours} hours...")
+        print(f"Running simulation for {duration_days} day(s) ({duration_days * 24} hours)...")
         print(f"Capturing snapshots every {capture_interval} minutes...")
         
         snapshot_count = 0
@@ -94,14 +94,15 @@ class AnimatedSimulation:
                 self.time_labels.append(self.sim.current_time)
                 snapshot_count += 1
                 
-                if snapshot_count % 10 == 0:
-                    hours = self.sim.current_time // 60
+                if snapshot_count % 20 == 0:  # Print less frequently for longer simulations
+                    day = self.sim.current_time // (24 * 60) + 1
+                    hours = (self.sim.current_time % (24 * 60)) // 60
                     minutes = self.sim.current_time % 60
-                    print(f"  Captured snapshot at {hours:02d}:{minutes:02d}")
+                    print(f"  Day {day}, {hours:02d}:{minutes:02d} - Captured {snapshot_count} snapshots")
             
             self.sim.step()
         
-        print(f"Simulation complete! Captured {len(self.snapshots)} snapshots.")
+        print(f"Simulation complete! Captured {len(self.snapshots)} snapshots over {duration_days} day(s).")
     
     def capture_snapshot(self):
         """Capture current state of all agents"""
@@ -162,10 +163,12 @@ class AnimatedSimulation:
             self.agent_scatter.set_offsets(np.column_stack((agent_x, agent_y)))
             self.agent_scatter.set_color(colors)
         
-        # Update time display
-        hours = snapshot['time'] // 60
-        minutes = snapshot['time'] % 60
-        time_str = f"Time: {hours:02d}:{minutes:02d}"
+        # Update time display with day information
+        total_minutes = snapshot['time']
+        day = total_minutes // (24 * 60) + 1
+        hours = (total_minutes % (24 * 60)) // 60
+        minutes = total_minutes % 60
+        time_str = f"Day {day}, {hours:02d}:{minutes:02d}"
         self.time_text.set_text(time_str)
         
         # Update info display
@@ -228,7 +231,7 @@ class AnimatedSimulation:
         
         if save_gif:
             print("Saving animation as GIF (this may take a while)...")
-            anim.save('agent_movement_animation.gif', writer='pillow', fps=2)
+            anim.save('agent_movement_animation.gif', writer='pillow', fps=5)
             print("Animation saved as 'agent_movement_animation.gif'")
         
         plt.tight_layout()
@@ -236,18 +239,26 @@ class AnimatedSimulation:
         
         return anim
 
-def create_static_snapshots():
+def create_static_snapshots(duration_days: int = 1):
     """Create static snapshots at key times for quick viewing"""
     sim = EVSimulation('roads.geojson', 'charging_points.geojson')
     sim.create_agents(15)
     
-    # Key times to capture: early morning, morning rush, midday, evening rush
-    key_times = [6*60, 9*60, 12*60, 18*60, 21*60]  # 6AM, 9AM, 12PM, 6PM, 9PM
+    # Key times to capture across multiple days: early morning, morning rush, midday, evening rush, night
+    base_times = [6*60, 9*60, 12*60, 18*60, 21*60]  # 6AM, 9AM, 12PM, 6PM, 9PM
+    key_times = []
+    
+    # Generate key times for each day
+    for day in range(duration_days):
+        for base_time in base_times:
+            key_times.append(day * 24 * 60 + base_time)
+    
     snapshots = []
     
-    print("Creating static snapshots at key times...")
+    print(f"Creating static snapshots for {duration_days} day(s) at key times...")
     
-    while sim.current_time <= max(key_times):
+    duration_minutes = duration_days * 24 * 60
+    while sim.current_time <= duration_minutes and sim.current_time <= max(key_times):
         if sim.current_time in key_times:
             # Capture snapshot
             snapshot_data = {
@@ -261,9 +272,18 @@ def create_static_snapshots():
         
         sim.step()
     
-    # Create subplot for each snapshot
-    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-    axes = axes.flatten()
+    # Create subplot grid - adjust based on number of snapshots
+    num_snapshots = len(snapshots)
+    cols = min(5, num_snapshots)
+    rows = (num_snapshots + cols - 1) // cols
+    
+    fig, axes = plt.subplots(rows, cols, figsize=(4*cols, 3*rows))
+    if num_snapshots == 1:
+        axes = [axes]
+    elif rows == 1:
+        axes = axes if isinstance(axes, list) else [axes]
+    else:
+        axes = axes.flatten()
     
     for idx, snapshot in enumerate(snapshots):
         ax = axes[idx]
@@ -302,22 +322,25 @@ def create_static_snapshots():
         
         ax.scatter(agent_x, agent_y, c=colors, s=80, zorder=4, alpha=0.8)
         
-        # Title with time and stats
-        hours = snapshot['time'] // 60
-        minutes = snapshot['time'] % 60
+        # Title with day, time and stats
+        total_minutes = snapshot['time']
+        day = total_minutes // (24 * 60) + 1
+        hours = (total_minutes % (24 * 60)) // 60
+        minutes = total_minutes % 60
         stats = snapshot['stats']
         
-        title = f"{hours:02d}:{minutes:02d} - Avg Battery: {stats['avg_battery']:.1f}%\n"
+        title = f"Day {day}, {hours:02d}:{minutes:02d}\n"
+        title += f"Avg Battery: {stats['avg_battery']:.1f}%\n"
         title += f"Charging: {stats['agents_charging']}, Commuting: {stats['agents_commuting']}"
         
-        ax.set_title(title, fontsize=10)
+        ax.set_title(title, fontsize=9)
         ax.grid(True, alpha=0.3)
         ax.set_xlabel('Longitude', fontsize=8)
         ax.set_ylabel('Latitude', fontsize=8)
     
-    # Remove empty subplot
-    if len(snapshots) < len(axes):
-        axes[-1].remove()
+    # Remove empty subplots
+    for idx in range(len(snapshots), len(axes)):
+        axes[idx].remove()
     
     plt.tight_layout()
     plt.savefig('simulation_snapshots.png', dpi=300, bbox_inches='tight')
@@ -332,14 +355,26 @@ def main():
     
     choice = input("Enter choice (1 or 2): ").strip()
     
+    # Get duration in days
+    try:
+        days = int(input("Enter number of days to simulate (1-7): ").strip())
+        days = max(1, min(7, days))  # Limit between 1-7 days
+    except ValueError:
+        days = 1
+        print("Invalid input, using 1 day.")
+    
     if choice == "2":
-        create_static_snapshots()
+        create_static_snapshots(duration_days=days)
     else:
         # Create animated simulation
         anim_sim = AnimatedSimulation('roads.geojson', 'charging_points.geojson', num_agents=15)
         
         # Run simulation and capture data
-        anim_sim.run_simulation_and_capture(duration_hours=12, capture_interval=30)
+        # Adjust capture interval based on duration to keep animation reasonable
+        capture_interval = 30 if days == 1 else 60 if days <= 3 else 120
+        print(f"Using capture interval of {capture_interval} minutes for {days} day(s)")
+        
+        anim_sim.run_simulation_and_capture(duration_days=days, capture_interval=capture_interval)
         
         # Create animation
         anim = anim_sim.create_animation(interval=800, save_gif=True)
