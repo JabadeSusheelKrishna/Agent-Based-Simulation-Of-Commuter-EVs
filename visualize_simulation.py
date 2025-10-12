@@ -4,7 +4,7 @@ import networkx as nx
 from ev_simulation import EVSimulation
 import numpy as np
 
-agents_count = 40
+agents_count = 50
 
 def visualize_network_and_stations():
     """Create a visualization of the road network and charging stations"""
@@ -89,7 +89,7 @@ def run_and_visualize_simulation():
     time_data = []
     stats_data = []
     
-    duration_hours = 24
+    duration_hours = 48
     duration_minutes = duration_hours * 60
     
     print("Running simulation for visualization...")

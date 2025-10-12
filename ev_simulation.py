@@ -89,8 +89,13 @@ class EVAgent:
         self.battery_capacity = 100.0  # kWh
         self.current_battery = random.uniform(20, 80)  # Start with lower random charge
         self.low_battery_threshold = 30.0
-        self.consumption_rate = 2.0  # kWh per km (higher consumption for demo)
+        self.consumption_rate = 5.0  # kWh per km (realistic consumption rate)
         self.charging_rate = 50.0  # kWh per hour (fast charging)
+        
+        # Movement parameters (in km/h and km)
+        self.speed = 25.0  # Average speed in km/h
+        self.distance_this_step = 0.0  # Distance to cover in current step
+        self.partial_edge_progress = 0.0  # For partial movement along an edge
         
         # State management
         self.state = "at_home"  # at_home, commuting_to_office, at_office, commuting_to_home, charging, waiting_to_charge
@@ -188,30 +193,60 @@ class EVAgent:
         return nearest_node
     
     def move_along_path(self):
-        """Move agent along the current path"""
+        """Move agent along the current path based on speed and time step"""
         if not self.path or self.path_index >= len(self.path) - 1:
             return False
         
-        current_node = self.path[self.path_index]
-        next_node = self.path[self.path_index + 1]
+        # Calculate distance to move this step (in km)
+        # speed is in km/h, simulation_step is in minutes, so convert to km/step
+        simulation_step_minutes = 10  # Should match the simulation step in EVSimulation.step()
+        distance_this_step = (self.speed / 60.0) * simulation_step_minutes  # km
+        distance_remaining = distance_this_step
         
-        # Calculate distance and battery consumption
-        if self.road_network.has_edge(current_node, next_node):
+        while distance_remaining > 0 and self.path_index < len(self.path) - 1:
+            current_node = self.path[self.path_index]
+            next_node = self.path[self.path_index + 1]
+            
+            if not self.road_network.has_edge(current_node, next_node):
+                self.path_index += 1
+                continue
+                
             edge_data = self.road_network[current_node][next_node]
-            distance_km = edge_data.get('length', 100) / 1000  # Convert to km
-            battery_consumed = distance_km * self.consumption_rate
+            edge_length = edge_data.get('length', 100)  # in meters
+            edge_length_km = edge_length / 1000.0  # convert to km
             
-            # Update battery and position
-            self.current_battery -= battery_consumed
-            self.path_index += 1
+            # Calculate how much of this edge we can cover
+            edge_remaining = edge_length_km - self.partial_edge_progress
+            distance_to_move = min(distance_remaining, edge_remaining)
             
-            # Update current location
-            node_data = self.road_network.nodes[next_node]
-            self.current_location = Location(node_data['y'], node_data['x'], next_node)
+            # Update position along edge
+            self.partial_edge_progress += distance_to_move
+            distance_remaining -= distance_to_move
             
-            return True
+            # Calculate battery consumption
+            battery_consumed = distance_to_move * self.consumption_rate
+            self.current_battery = max(0, self.current_battery - battery_consumed)
+            
+            # If we've reached the end of this edge
+            if self.partial_edge_progress >= edge_length_km - 1e-6:  # Small epsilon for floating point comparison
+                self.path_index += 1
+                self.partial_edge_progress = 0.0
+                
+                # Update current location to the next node
+                node_data = self.road_network.nodes[next_node]
+                self.current_location = Location(node_data['y'], node_data['x'], next_node)
+            else:
+                # Calculate intermediate position along the edge
+                ratio = self.partial_edge_progress / edge_length_km
+                start_node_data = self.road_network.nodes[current_node]
+                end_node_data = self.road_network.nodes[next_node]
+                
+                # Linear interpolation of coordinates
+                lat = start_node_data['y'] + ratio * (end_node_data['y'] - start_node_data['y'])
+                lon = start_node_data['x'] + ratio * (end_node_data['x'] - start_node_data['x'])
+                self.current_location = Location(lat, lon, node_id=None)  # Not at a node
         
-        return False
+        return distance_remaining < distance_this_step  # Return True if any movement occurred
     
     def update(self, current_time_minutes: int, charging_stations: List[ChargingStation]):
         """Update agent state based on time and conditions"""
