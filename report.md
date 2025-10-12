@@ -124,18 +124,14 @@ This report provides a comprehensive analysis of the Electric Vehicle (EV) simul
    - Consider traffic conditions
    - Implement dynamic routing based on charging station availability
 
-2. **Enhanced Visualization**:
-   - Interactive visualizations
-   - Real-time simulation monitoring
-   - 3D visualization of the city
-
 3. **Additional Features**:
    - Different types of EVs with varying characteristics
-   - Dynamic pricing for charging
-   - Integration with real-world map data
+   - Charging pricing integration
+   - Integrating highway conditions for intercity travelling
    - Weather and traffic condition simulation
+   - Include more testing for the ev_simulator.py file in the debug_simulation.py file.
 
-4. **Performance Optimization**:
+4. **Performance Optimization**: (Cannot be done for this BTP)
    - Parallel processing for agent updates
    - Spatial indexing for faster proximity searches
    - More efficient data structures for large-scale simulations
