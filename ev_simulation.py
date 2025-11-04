@@ -3,11 +3,11 @@ import networkx as nx
 import numpy as np
 import random
 from collections import deque
+from typing import List, Tuple, Optional, Dict, Any, Union
 from dataclasses import dataclass
-from typing import List, Tuple, Optional, Dict
-import matplotlib.pyplot as plt
-from geopy.distance import geodesic
 import time
+from geopy.distance import geodesic
+import matplotlib.pyplot as plt
 
 @dataclass
 class Location:
@@ -192,15 +192,69 @@ class EVAgent:
         
         return nearest_node
     
-    def move_along_path(self):
+    def get_speed_limit(self, road_type: str) -> float:
+        """Get speed limit in km/h based on road type"""
+        # Default speed limits by road type (in km/h)
+        speed_limits = {
+            'motorway': 120,
+            'motorway_link': 100,
+            'trunk': 100,
+            'trunk_link': 80,
+            'primary': 80,
+            'primary_link': 70,
+            'secondary': 70,
+            'secondary_link': 60,
+            'tertiary': 60,
+            'tertiary_link': 50,
+            'unclassified': 50,
+            'residential': 30,
+            'service': 30,
+            'living_street': 20,
+            'pedestrian': 15,
+        }
+        
+        # If no road type or unknown, default to 40 km/h
+        if not road_type or road_type not in speed_limits:
+            return 40.0
+            
+        return speed_limits[road_type]
+        
+    def get_current_road_speed_limit(self) -> float:
+        """Get speed limit for the current road segment"""
+        if not self.path or self.path_index >= len(self.path) - 1:
+            return 40.0  # Default speed if no path
+            
+        current_node = self.path[self.path_index]
+        next_node = self.path[self.path_index + 1]
+        
+        if not self.road_network.has_edge(current_node, next_node):
+            return 40.0  # Default speed if no edge exists
+            
+        edge_data = self.road_network[current_node][next_node]
+        road_type = edge_data.get('highway')
+        
+        # If maxspeed is specified in the data, use it (converting from string to float)
+        if 'maxspeed' in edge_data and edge_data['maxspeed']:
+            try:
+                return float(edge_data['maxspeed'])
+            except (ValueError, TypeError):
+                pass
+                
+        # Otherwise use the default for the road type
+        return self.get_speed_limit(road_type)
+    
+    def move_along_path(self) -> bool:
         """Move agent along the current path based on speed and time step"""
         if not self.path or self.path_index >= len(self.path) - 1:
-            return False
+            return False  # No path or reached destination
+            
+        # Get speed limit for the current road segment
+        current_speed_limit = self.get_current_road_speed_limit()
         
         # Calculate distance to move this step (in km)
         # speed is in km/h, simulation_step is in minutes, so convert to km/step
         simulation_step_minutes = 10  # Should match the simulation step in EVSimulation.step()
-        distance_this_step = (self.speed / 60.0) * simulation_step_minutes  # km
+        distance_this_step = (current_speed_limit / 60.0) * simulation_step_minutes  # km
         distance_remaining = distance_this_step
         
         while distance_remaining > 0 and self.path_index < len(self.path) - 1:
@@ -371,8 +425,18 @@ class EVSimulation:
                 G.add_node(u_node, x=start_coord[0], y=start_coord[1])
                 G.add_node(v_node, x=end_coord[0], y=end_coord[1])
                 
-                # Add edge with length as weight
-                G.add_edge(u_node, v_node, length=length)
+                # Add edge with properties
+                edge_attrs = {
+                    'length': length,
+                    'highway': properties.get('highway'),  # Road type
+                    'maxspeed': properties.get('maxspeed')  # Speed limit if available
+                }
+                # Add any additional properties that might be useful
+                for key in ['name', 'lanes', 'oneway']:
+                    if key in properties:
+                        edge_attrs[key] = properties[key]
+                
+                G.add_edge(u_node, v_node, **edge_attrs)
         
         return G
     
@@ -389,7 +453,7 @@ class EVSimulation:
                 location = Location(coords[1], coords[0])  # lat, lon
                 
                 # Random number of ports between 2-6
-                max_ports = random.randint(2, 6)
+                max_ports = random.randint(1, 3)
                 station = ChargingStation(location, name, max_ports)
                 stations.append(station)
         
