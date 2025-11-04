@@ -1,10 +1,13 @@
 import json
 import matplotlib.pyplot as plt
 import networkx as nx
-from ev_simulation import EVSimulation
+from ev_simulation import EVSimulation, CONFIG
 import numpy as np
+import os
 
-agents_count = 50
+# Load configuration
+agents_count = CONFIG['agent']['count']
+VIS_CONFIG = CONFIG['visualization']
 
 def visualize_network_and_stations():
     """Create a visualization of the road network and charging stations"""
@@ -15,7 +18,7 @@ def visualize_network_and_stations():
     sim.create_agents(agents_count)
     
     # Create figure with subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=VIS_CONFIG['network_figsize'])
     
     # Plot 1: Road Network and Charging Stations
     pos = {}
@@ -24,21 +27,43 @@ def visualize_network_and_stations():
         pos[node] = (node_data['x'], node_data['y'])
     
     # Draw road network
-    nx.draw_networkx_edges(sim.road_network, pos, ax=ax1, edge_color='gray', alpha=0.5, width=0.5)
-    nx.draw_networkx_nodes(sim.road_network, pos, ax=ax1, node_color='lightblue', 
-                          node_size=10, alpha=0.7)
+    nx.draw_networkx_edges(
+        sim.road_network, pos, ax=ax1, 
+        edge_color=VIS_CONFIG['edge_color'], 
+        alpha=VIS_CONFIG['edge_alpha'], 
+        width=VIS_CONFIG['edge_width']
+    )
+    nx.draw_networkx_nodes(
+        sim.road_network, pos, ax=ax1, 
+        node_color=VIS_CONFIG['node_color'],
+        node_size=VIS_CONFIG['node_size'], 
+        alpha=VIS_CONFIG['node_alpha']
+    )
     
     # Draw charging stations
     station_x = [station.location.lon for station in sim.charging_stations]
     station_y = [station.location.lat for station in sim.charging_stations]
-    ax1.scatter(station_x, station_y, c='red', s=100, marker='s', 
-               label=f'Charging Stations ({len(sim.charging_stations)})', zorder=5)
+    ax1.scatter(
+        station_x, station_y, 
+        c=VIS_CONFIG['station_color'], 
+        s=VIS_CONFIG['station_size'], 
+        marker=VIS_CONFIG['station_marker'],
+        label=f'Charging Stations ({len(sim.charging_stations)})', 
+        zorder=5
+    )
     
     # Draw home locations
     home_x = [agent.home.lon for agent in sim.agents]
     home_y = [agent.home.lat for agent in sim.agents]
-    ax1.scatter(home_x, home_y, c='green', s=60, marker='o', 
-               label=f'Home Locations ({len(set(zip(home_x, home_y)))})', zorder=4, alpha=0.8)
+    ax1.scatter(
+        home_x, home_y, 
+        c=VIS_CONFIG['home_color'], 
+        s=VIS_CONFIG['home_size'], 
+        marker='o',
+        label=f'Home Locations ({len(set(zip(home_x, home_y)))})', 
+        zorder=4, 
+        alpha=VIS_CONFIG['home_alpha']
+    )
     
     # Draw office locations
     office_x = [agent.office.lon for agent in sim.agents]
@@ -47,8 +72,15 @@ def visualize_network_and_stations():
     unique_offices = list(set(zip(office_x, office_y)))
     office_unique_x = [loc[0] for loc in unique_offices]
     office_unique_y = [loc[1] for loc in unique_offices]
-    ax1.scatter(office_unique_x, office_unique_y, c='blue', s=100, marker='^', 
-               label=f'Office Locations ({len(unique_offices)})', zorder=4, alpha=0.8)
+    ax1.scatter(
+        office_unique_x, office_unique_y, 
+        c=VIS_CONFIG['office_color'], 
+        s=VIS_CONFIG['office_size'], 
+        marker='^',
+        label=f'Office Locations ({len(unique_offices)})', 
+        zorder=4, 
+        alpha=VIS_CONFIG['office_alpha']
+    )
     
     ax1.set_title('Road Network with Agent Locations and Charging Stations')
     ax1.set_xlabel('Longitude')
@@ -75,9 +107,8 @@ def visualize_network_and_stations():
                 f'{int(height)}', ha='center', va='bottom')
     
     ax2.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig('network_visualization.png', dpi=300, bbox_inches='tight')
+    # Save and show the figure
+    plt.savefig(CONFIG['paths']['network_visualization'], dpi=300, bbox_inches='tight')
     plt.show()
 
 def run_and_visualize_simulation():
@@ -104,7 +135,7 @@ def run_and_visualize_simulation():
             stats_data.append(stats)
     
     # Create visualization
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=VIS_CONFIG['stats_figsize'])
     
     # Extract data for plotting
     hours = time_data
@@ -170,13 +201,13 @@ def run_and_visualize_simulation():
     ax4.set_xlim(0, duration_hours)
     
     plt.tight_layout()
-    plt.savefig('simulation_results.png', dpi=300, bbox_inches='tight')
+    plt.savefig(CONFIG['paths']['simulation_results'], dpi=300, bbox_inches='tight')
     plt.show()
     
     # Print final statistics
     print("\n=== Final Simulation Summary ===")
     final_stats = stats_data[-1]
-    print(f"Total agents: 20")
+    print(f"Total agents: {agents_count}")
     print(f"Final average battery: {final_stats['avg_battery']:.1f}%")
     print(f"Agents with low battery: {final_stats['low_battery_agents']}")
     print(f"Peak charging port usage: {max(occupied_ports)}/{final_stats['total_charging_ports']}")

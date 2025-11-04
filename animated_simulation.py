@@ -2,15 +2,26 @@ import json
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import networkx as nx
-from ev_simulation import EVSimulation
+from ev_simulation import EVSimulation, CONFIG
 import numpy as np
 from matplotlib.patches import Circle
 import time
+import os
+
+# Load visualization config
+VIS_CONFIG = CONFIG['visualization']
+SIM_CONFIG = CONFIG['simulation']
+AGENT_CONFIG = CONFIG['agent']
 
 class AnimatedSimulation:
     """Create animated visualization of agent movement"""
     
-    def __init__(self, roads_file: str, charging_points_file: str, num_agents: int = 10):
+    def __init__(self, roads_file: str = None, charging_points_file: str = None, num_agents: int = None):
+        # Use config values if not provided
+        roads_file = roads_file or CONFIG['paths']['roads']
+        charging_points_file = charging_points_file or CONFIG['paths']['charging_points']
+        num_agents = num_agents or AGENT_CONFIG['count']
+        
         self.sim = EVSimulation(roads_file, charging_points_file)
         self.sim.create_agents(num_agents)
         
@@ -19,7 +30,7 @@ class AnimatedSimulation:
         self.time_labels = []
         
         # Setup plot
-        self.fig, self.ax = plt.subplots(figsize=(12, 10))
+        self.fig, self.ax = plt.subplots(figsize=VIS_CONFIG['animation_figsize'])
         self.setup_base_map()
         
     def setup_base_map(self):
@@ -31,22 +42,45 @@ class AnimatedSimulation:
             self.pos[node] = (node_data['x'], node_data['y'])
         
         # Draw road network (static)
-        nx.draw_networkx_edges(self.sim.road_network, self.pos, ax=self.ax, 
-                              edge_color='gray', alpha=0.3, width=0.5)
-        nx.draw_networkx_nodes(self.sim.road_network, self.pos, ax=self.ax, 
-                              node_color='lightgray', node_size=5, alpha=0.5)
+        nx.draw_networkx_edges(
+            self.sim.road_network, self.pos, ax=self.ax,
+            edge_color=VIS_CONFIG['edge_color'],
+            alpha=VIS_CONFIG['edge_alpha'],
+            width=VIS_CONFIG['edge_width']
+        )
+        nx.draw_networkx_nodes(
+            self.sim.road_network, self.pos, ax=self.ax,
+            node_color=VIS_CONFIG['node_color'],
+            node_size=VIS_CONFIG['node_size'],
+            alpha=VIS_CONFIG['node_alpha']
+        )
         
         # Draw charging stations (static)
         station_x = [station.location.lon for station in self.sim.charging_stations]
         station_y = [station.location.lat for station in self.sim.charging_stations]
-        self.ax.scatter(station_x, station_y, c='red', s=150, marker='s', 
-                       label='Charging Stations', zorder=3, edgecolors='black')
+        self.ax.scatter(
+            station_x, station_y,
+            c=VIS_CONFIG['station_color'],
+            s=VIS_CONFIG['station_size'],
+            marker=VIS_CONFIG['station_marker'],
+            label='Charging Stations',
+            zorder=3,
+            edgecolors='black'
+        )
         
         # Draw home locations (static)
         home_x = [agent.home.lon for agent in self.sim.agents]
         home_y = [agent.home.lat for agent in self.sim.agents]
-        self.ax.scatter(home_x, home_y, c='green', s=80, marker='o', 
-                       label='Homes', zorder=2, alpha=0.7, edgecolors='darkgreen')
+        self.ax.scatter(
+            home_x, home_y,
+            c=VIS_CONFIG['home_color'],
+            s=VIS_CONFIG['home_size'],
+            marker='o',
+            label='Homes',
+            zorder=2,
+            alpha=VIS_CONFIG['home_alpha'],
+            edgecolors='darkgreen'
+        )
         
         # Draw office locations (static)
         office_x = [agent.office.lon for agent in self.sim.agents]
@@ -54,8 +88,16 @@ class AnimatedSimulation:
         unique_offices = list(set(zip(office_x, office_y)))
         office_unique_x = [loc[0] for loc in unique_offices]
         office_unique_y = [loc[1] for loc in unique_offices]
-        self.ax.scatter(office_unique_x, office_unique_y, c='blue', s=120, marker='^', 
-                       label='Offices', zorder=2, alpha=0.8, edgecolors='darkblue')
+        self.ax.scatter(
+            office_unique_x, office_unique_y,
+            c=VIS_CONFIG['office_color'],
+            s=VIS_CONFIG['office_size'],
+            marker='^',
+            label='Offices',
+            zorder=2,
+            alpha=VIS_CONFIG['office_alpha'],
+            edgecolors='darkblue'
+        )
         
         # Setup plot properties
         self.ax.set_title('EV Agent Movement Simulation', fontsize=16, fontweight='bold')
@@ -210,19 +252,26 @@ class AnimatedSimulation:
             interval=interval, blit=False, repeat=True
         )
         
-        # Add legend for agent colors
+        # Add agent state colors
+        colors = AGENT_CONFIG['colors']
         legend_elements = [
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='lightgreen', 
+            plt.Line2D([0], [0], marker='o', color='w', 
+                      markerfacecolor=colors['at_home'],
                       markersize=10, label='At Home'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='lightblue', 
+            plt.Line2D([0], [0], marker='o', color='w', 
+                      markerfacecolor=colors['at_office'],
                       markersize=10, label='At Office'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='yellow', 
+            plt.Line2D([0], [0], marker='o', color='w', 
+                      markerfacecolor=colors['commuting'],
                       markersize=10, label='Commuting'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red', 
+            plt.Line2D([0], [0], marker='o', color='w', 
+                      markerfacecolor=colors['low_battery'],
                       markersize=10, label='Low Battery'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='purple', 
+            plt.Line2D([0], [0], marker='o', color='w', 
+                      markerfacecolor=colors['charging'],
                       markersize=10, label='Charging'),
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='orange', 
+            plt.Line2D([0], [0], marker='o', color='w', 
+                      markerfacecolor=colors['waiting'],
                       markersize=10, label='Waiting to Charge')
         ]
         
@@ -231,7 +280,11 @@ class AnimatedSimulation:
         
         if save_gif:
             print("Saving animation as GIF (this may take a while)...")
-            anim.save('agent_movement_animation.gif', writer='pillow', fps=5)
+            anim.save(
+                CONFIG['paths']['animation_output'],
+                writer='pillow',
+                fps=VIS_CONFIG['animation_fps']
+            )
             print("Animation saved as 'agent_movement_animation.gif'")
         
         plt.tight_layout()
@@ -239,13 +292,14 @@ class AnimatedSimulation:
         
         return anim
 
-def create_static_snapshots(duration_days: int = 1):
+def create_static_snapshots(duration_days: int = None):
     """Create static snapshots at key times for quick viewing"""
-    sim = EVSimulation('roads.geojson', 'charging_points.geojson')
-    sim.create_agents(15)
+    duration_days = duration_days or SIM_CONFIG['duration_days']
+    sim = EVSimulation()  # Uses default paths from config
+    sim.create_agents(AGENT_CONFIG['count'])
     
-    # Key times to capture across multiple days: early morning, morning rush, midday, evening rush, night
-    base_times = [6*60, 9*60, 12*60, 18*60, 21*60]  # 6AM, 9AM, 12PM, 6PM, 9PM
+    # Key times to capture across multiple days
+    base_times = VIS_CONFIG['snapshot_times']  # Times in minutes from midnight
     key_times = []
     
     # Generate key times for each day
@@ -272,9 +326,9 @@ def create_static_snapshots(duration_days: int = 1):
         
         sim.step()
     
-    # Create subplot grid - adjust based on number of snapshots
+    # Create subplot grid
     num_snapshots = len(snapshots)
-    cols = min(5, num_snapshots)
+    cols = min(VIS_CONFIG['snapshot_cols'], num_snapshots)
     rows = (num_snapshots + cols - 1) // cols
     
     fig, axes = plt.subplots(rows, cols, figsize=(4*cols, 3*rows))
@@ -343,7 +397,7 @@ def create_static_snapshots(duration_days: int = 1):
         axes[idx].remove()
     
     plt.tight_layout()
-    plt.savefig('simulation_snapshots.png', dpi=300, bbox_inches='tight')
+    plt.savefig(CONFIG['paths']['snapshots_output'], dpi=300, bbox_inches='tight')
     plt.show()
 
 def main():
@@ -366,18 +420,23 @@ def main():
     if choice == "2":
         create_static_snapshots(duration_days=days)
     else:
-        # Create animated simulation
-        anim_sim = AnimatedSimulation('roads.geojson', 'charging_points.geojson', num_agents=15)
+        # Create animated simulation with config values
+        anim_sim = AnimatedSimulation()  # Uses default paths and agent count from config
         
         # Run simulation and capture data
-        # Adjust capture interval based on duration to keep animation reasonable
-        capture_interval = 30 if days == 1 else 60 if days <= 3 else 120
+        # Use fixed capture interval from config
         print(f"Using capture interval of {capture_interval} minutes for {days} day(s)")
         
-        anim_sim.run_simulation_and_capture(duration_days=days, capture_interval=capture_interval)
+        anim_sim.run_simulation_and_capture(
+            duration_days=days,
+            capture_interval=SIM_CONFIG['capture_interval_minutes']
+        )
         
-        # Create animation
-        anim = anim_sim.create_animation(interval=800, save_gif=True)
+        # Create animation with config values
+        anim = anim_sim.create_animation(
+            interval=VIS_CONFIG['animation_interval'],
+            save_gif=True
+        )
 
 if __name__ == "__main__":
     main()

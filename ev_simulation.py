@@ -3,11 +3,26 @@ import networkx as nx
 import numpy as np
 import random
 from collections import deque
-from typing import List, Tuple, Optional, Dict, Any, Union
+from typing import List, Tuple, Optional, Dict, Any, Union, TYPE_CHECKING
 from dataclasses import dataclass
 import time
 from geopy.distance import geodesic
 import matplotlib.pyplot as plt
+import yaml
+import os
+
+# Import the charging allocator
+from chargingAllocator import ChargingAllocationContext, get_charging_station
+
+# Load configuration
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ProjectConfigs.yaml')
+with open(CONFIG_FILE, 'r') as f:
+    CONFIG = yaml.safe_load(f)
+
+# Extract commonly used configs
+AGENT_CONFIG = CONFIG['agent']
+SIM_CONFIG = CONFIG['simulation']
+CHARGING_CONFIG = CONFIG['charging_station']
 
 @dataclass
 class Location:
@@ -23,10 +38,10 @@ class Location:
 class ChargingStation:
     """Represents a charging station with limited capacity and queue management"""
     
-    def __init__(self, location: Location, name: str, max_ports: int = 4):
+    def __init__(self, location: Location, name: str, max_ports: int = None):
         self.location = location
         self.name = name
-        self.max_ports = max_ports
+        self.max_ports = max_ports or CONFIG['charging_station']['default_ports']
         self.occupied_ports = 0
         self.queue = deque()  # Queue of agents waiting to charge
         self.charging_agents = []  # Currently charging agents
@@ -86,14 +101,17 @@ class EVAgent:
         self.road_network = road_network
         
         # Battery management
-        self.battery_capacity = 100.0  # kWh
-        self.current_battery = random.uniform(20, 80)  # Start with lower random charge
-        self.low_battery_threshold = 30.0
-        self.consumption_rate = 5.0  # kWh per km (realistic consumption rate)
-        self.charging_rate = 50.0  # kWh per hour (fast charging)
+        self.battery_capacity = AGENT_CONFIG['battery']['capacity']
+        self.current_battery = random.uniform(
+            AGENT_CONFIG['battery']['initial_min'], 
+            AGENT_CONFIG['battery']['initial_max']
+        )
+        self.low_battery_threshold = AGENT_CONFIG['battery']['low_threshold']
+        self.consumption_rate = AGENT_CONFIG['consumption_rate']
+        self.charging_rate = AGENT_CONFIG['charging_rate']
         
         # Movement parameters (in km/h and km)
-        self.speed = 25.0  # Average speed in km/h
+        self.speed = AGENT_CONFIG['speed']
         self.distance_this_step = 0.0  # Distance to cover in current step
         self.partial_edge_progress = 0.0  # For partial movement along an edge
         
@@ -104,7 +122,10 @@ class EVAgent:
         self.path_index = 0
         self.charging_start_time = None
         self.charging_start_sim_time = None  # Track simulation time when charging started
-        self.schedule_offset = random.uniform(0, 60)  # Random start time offset in minutes
+        self.schedule_offset = random.uniform(
+            AGENT_CONFIG['schedule_offset_min'], 
+            AGENT_CONFIG['schedule_offset_max']
+        )  # Random start time offset in minutes
         
     def needs_charging(self) -> bool:
         """Check if agent needs to charge"""
@@ -149,8 +170,9 @@ class EVAgent:
         charging_time_hours = charging_time_minutes / 60.0
         charge_added = charging_time_hours * self.charging_rate
         
-        # Charge to 80% or for at least 30 minutes of simulation time (whichever comes first)
-        return (self.current_battery + charge_added >= 80.0) or (charging_time_minutes >= 30)
+        # Charge to target level or for minimum charging time (whichever comes first)
+        return (self.current_battery + charge_added >= CHARGING_CONFIG['target_charge_level']) or \
+               (charging_time_minutes >= CHARGING_CONFIG['min_charging_time'])
     
     def update_battery_after_charging(self, current_sim_time: int = None):
         """Update battery level after charging"""
@@ -253,7 +275,7 @@ class EVAgent:
         
         # Calculate distance to move this step (in km)
         # speed is in km/h, simulation_step is in minutes, so convert to km/step
-        simulation_step_minutes = 10  # Should match the simulation step in EVSimulation.step()
+        simulation_step_minutes = SIM_CONFIG['step_minutes']
         distance_this_step = (current_speed_limit / 60.0) * simulation_step_minutes  # km
         distance_remaining = distance_this_step
         
@@ -334,7 +356,7 @@ class EVAgent:
         # Morning commute: home to office
         if (self.state == "at_home" and 
             time_in_day >= morning_commute_start and 
-            time_in_day < morning_commute_start + 120):  # 2-hour window
+            time_in_day < morning_commute_start + SIM_CONFIG['schedule']['morning_commute_window']):
             
             self.destination = self.office
             self.path = self.find_path_to_destination(self.destination)
@@ -344,7 +366,7 @@ class EVAgent:
         # Evening commute: office to home
         elif (self.state == "at_office" and 
               time_in_day >= evening_commute_start and 
-              time_in_day < evening_commute_start + 120):  # 2-hour window
+              time_in_day < evening_commute_start + SIM_CONFIG['schedule']['evening_commute_window']):
             
             self.destination = self.home
             self.path = self.find_path_to_destination(self.destination)
@@ -376,31 +398,42 @@ class EVAgent:
                     self.path = []
                     self.path_index = 0
     
-    def find_nearest_charging_station(self, charging_stations: List[ChargingStation]) -> Optional[ChargingStation]:
-        """Find the nearest charging station"""
+    def find_nearest_charging_station(self, charging_stations: List[ChargingStation], 
+                                   road_network: Any = None) -> Optional[ChargingStation]:
+        """
+        Find a charging station using the configured allocation strategy.
+        
+        Args:
+            charging_stations: List of available charging stations
+            road_network: The road network graph (optional, for more advanced routing)
+            
+        Returns:
+            The selected ChargingStation, or None if no suitable station is found
+        """
         if not charging_stations:
             return None
+            
+        # Create a context with all the information that allocation strategies might need
+        context = ChargingAllocationContext(
+            agent=self,
+            charging_stations=charging_stations,
+            current_time=getattr(self, 'current_sim_time', 0),  # Use 0 if not set
+            road_network=road_network or getattr(self, 'road_network', None)
+        )
         
-        min_distance = float('inf')
-        nearest_station = None
-        
-        for station in charging_stations:
-            distance = self.current_location.distance_to(station.location)
-            if distance < min_distance:
-                min_distance = distance
-                nearest_station = station
-        
-        return nearest_station
+        # Use the default allocator (can be overridden by passing a different one)
+        return get_charging_station(context)
 
 class EVSimulation:
     """Main simulation class"""
     
-    def __init__(self, roads_file: str, charging_points_file: str):
-        self.road_network = self.load_road_network(roads_file)
-        self.charging_stations = self.load_charging_stations(charging_points_file)
+    def __init__(self, roads_file: str = None, charging_points_file: str = None):
+        # Use file paths from config if not provided
+        self.road_network = self.load_road_network(roads_file or CONFIG['paths']['roads'])
+        self.charging_stations = self.load_charging_stations(charging_points_file or CONFIG['paths']['charging_points'])
         self.agents = []
         self.current_time = 0  # Time in minutes from start of day
-        self.simulation_speed = 10  # Minutes per simulation step
+        self.simulation_speed = SIM_CONFIG['step_minutes']  # Minutes per simulation step
         
     def load_road_network(self, roads_file: str) -> nx.Graph:
         """Load road network from GeoJSON and create NetworkX graph"""
@@ -554,15 +587,10 @@ class EVSimulation:
 
 def main():
     """Main function to run the simulation"""
-    # Initialize simulation
-    sim = EVSimulation('roads.geojson', 'charging_points.geojson')
-    
-    # Create agents
-    num_agents = 20  # Start with 20 agents for testing
-    sim.create_agents(num_agents)
-    
-    # Run simulation for one day
-    sim.run_simulation(duration_hours=24, print_interval=120)  # Print stats every 2 hours
+    # Create and run simulation
+    sim = EVSimulation()  # Uses paths from config
+    sim.create_agents(AGENT_CONFIG['count'])  # Create agents based on config
+    sim.run_simulation(duration_hours=SIM_CONFIG['duration_days'] * 24)  # Run for configured duration
 
 if __name__ == "__main__":
     main()

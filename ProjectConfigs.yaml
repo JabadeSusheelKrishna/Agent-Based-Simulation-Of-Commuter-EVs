@@ -1,0 +1,90 @@
+# EV Simulation Configuration
+# This file contains all configurable parameters for the EV simulation
+
+# Agent Configuration
+agent:
+  count: 50  # Default number of agents in the simulation
+  battery:
+    capacity: 100.0  # kWh
+    low_threshold: 30.0  # %
+    initial_min: 20.0  # %
+    initial_max: 80.0  # %
+  consumption_rate: 5.0  # kWh per km
+  charging_rate: 50.0  # kWh per hour (fast charging)
+  speed: 25.0  # km/h (average speed)
+  schedule_offset_min: 0  # minutes
+  schedule_offset_max: 60  # minutes
+  
+  # Agent state colors for visualization
+  colors:
+    at_home: 'lightgreen'
+    at_office: 'lightblue'
+    commuting: 'yellow'
+    charging: 'purple'
+    waiting: 'orange'
+    low_battery: 'red'
+
+# Simulation Configuration
+simulation:
+  step_minutes: 10  # Simulation time step in minutes
+  duration_days: 2  # Default simulation duration in days
+  
+  # Time windows for commuting (in minutes from midnight)
+  schedule:
+    morning_commute_start: 480  # 8:00 AM
+    morning_commute_window: 120  # 2-hour window
+    evening_commute_start: 1020  # 5:00 PM
+    evening_commute_window: 120  # 2-hour window
+
+# Charging Station Configuration
+charging_station:
+  default_ports: 4  # Default number of charging ports per station
+  
+  # Charging behavior
+  min_charging_time: 30  # minutes
+  target_charge_level: 80.0  # %
+
+# Visualization Configuration
+visualization:
+  # Figure sizes
+  network_figsize: [15, 7]  # Width, height in inches
+  stats_figsize: [15, 10]  # Width, height in inches
+  animation_figsize: [12, 10]  # Width, height in inches
+  
+  # Network visualization
+  node_size: 10
+  node_alpha: 0.5
+  node_color: 'lightgray'
+  edge_color: 'gray'
+  edge_alpha: 0.5
+  edge_width: 0.5
+  
+  # Station visualization
+  station_size: 150
+  station_color: 'red'
+  station_marker: 's'
+  
+  # Home/Office visualization
+  home_size: 80
+  home_color: 'green'
+  home_alpha: 0.7
+  office_size: 120
+  office_color: 'blue'
+  office_alpha: 0.8
+  
+  # Animation settings
+  animation_interval: 800  # ms between frames
+  animation_fps: 5  # Frames per second for saved GIF
+  
+  # Static snapshots
+  snapshot_times: [360, 540, 720, 1080, 1260]  # Times in minutes (6AM, 9AM, 12PM, 6PM, 9PM)
+  snapshot_cols: 5  # Number of columns in snapshot grid
+
+# File Paths
+paths:
+  roads: 'roads.geojson'
+  charging_points: 'charging_points.geojson'
+  network_visualization: 'network_visualization.png'
+  simulation_results: 'simulation_results.png'
+  animation_output: 'agent_movement_animation.gif'
+  snapshots_output: 'simulation_snapshots.png'
