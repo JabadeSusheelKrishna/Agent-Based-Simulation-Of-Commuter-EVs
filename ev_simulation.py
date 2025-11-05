@@ -486,7 +486,7 @@ class EVSimulation:
                 location = Location(coords[1], coords[0])  # lat, lon
                 
                 # Random number of ports between 2-6
-                max_ports = random.randint(1, 3)
+                max_ports = random.randint(1, 2)
                 station = ChargingStation(location, name, max_ports)
                 stations.append(station)
         
@@ -507,15 +507,29 @@ class EVSimulation:
         
         return locations
     
-    def create_agents(self, num_agents: int):
-        """Create EV agents with random home and office locations"""
-        locations = self.generate_random_locations(num_agents * 2)
+    def create_agents(self, num_agents: int, locations_file: str = None):
+        """
+        Create EV agents with home and office locations.
         
-        for i in range(num_agents):
-            home = locations[i * 2]             # even places
-            office = locations[i * 2 + 1]       # Odd places
-            agent = EVAgent(i, home, office, self.road_network)
-            self.agents.append(agent)
+        Args:
+            num_agents (int): Number of agents to create
+            locations_file (str, optional): Path to a JSON file containing pre-defined locations.
+                                          If None, random locations will be generated.
+        """
+        if locations_file and os.path.exists(locations_file):
+            # Load locations from file
+            from agentInitializer import AgentInitializer
+            locations_data = AgentInitializer.load_locations(locations_file)
+            AgentInitializer.create_agents_from_locations(self, locations_data)
+        else:
+            # Generate random locations
+            locations = self.generate_random_locations(num_agents * 2)
+            
+            for i in range(num_agents):
+                home = locations[i * 2]             # even places
+                office = locations[i * 2 + 1]       # odd places
+                agent = EVAgent(i, home, office, self.road_network)
+                self.agents.append(agent)
     
     def step(self):
         """Execute one simulation step"""

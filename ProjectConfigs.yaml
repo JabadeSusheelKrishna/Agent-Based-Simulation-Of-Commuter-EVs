@@ -9,8 +9,8 @@ agent:
     low_threshold: 30.0  # %
     initial_min: 20.0  # %
     initial_max: 80.0  # %
-  consumption_rate: 5.0  # kWh per km
-  charging_rate: 50.0  # kWh per hour (fast charging)
+  consumption_rate: 25.0  # kWh per km
+  charging_rate: 30.0  # kWh per hour (fast charging)
   speed: 25.0  # km/h (average speed)
   schedule_offset_min: 0  # minutes
   schedule_offset_max: 60  # minutes
@@ -24,10 +24,34 @@ agent:
     waiting: 'orange'
     low_battery: 'red'
 
+# Allocation Algorithm Configuration
+allocation:
+  # Available algorithms:
+  # - 'nearest': Simple nearest available station
+  # - 'queue_time': Considers both distance and estimated queue time
+  # - 'least_utilized': Prefers stations with more available ports
+  # - 'cost_based': Considers charging cost, distance, and utilization
+  # - 'ALL': Run all algorithms for comparison
+  algorithm: 'ALL'  # Default algorithm
+  
+  # Algorithm-specific parameters
+  parameters:
+    # Parameters for queue_time algorithm
+    queue_time:
+      average_charging_time: 60  # minutes
+      capacity_weight: 0.2  # Weight for capacity factor in scoring (0-1)
+    
+    # Parameters for cost_based algorithm
+    cost_based:
+      base_charging_rate: 0.15  # $/kWh
+      travel_cost_per_km: 0.15  # $/km
+      time_value: 0.2  # $/minute (value of time for waiting)
+      utilization_penalty: 5.0  # Max $ penalty for high utilization
+
 # Simulation Configuration
 simulation:
-  step_minutes: 10  # Simulation time step in minutes
-  duration_days: 2  # Default simulation duration in days
+  step_minutes: 30  # Simulation time step in minutes
+  duration_days: 3  # Default simulation duration in days
   
   # Time windows for commuting (in minutes from midnight)
   schedule:
@@ -38,10 +62,10 @@ simulation:
 
 # Charging Station Configuration
 charging_station:
-  default_ports: 4  # Default number of charging ports per station
+  default_ports: 2  # Default number of charging ports per station
   
   # Charging behavior
-  min_charging_time: 30  # minutes
+  min_charging_time: 60  # minutes
   target_charge_level: 80.0  # %
 
 # Visualization Configuration
@@ -84,7 +108,15 @@ visualization:
 paths:
   roads: 'roads.geojson'
   charging_points: 'charging_points.geojson'
-  network_visualization: 'network_visualization.png'
-  simulation_results: 'simulation_results.png'
-  animation_output: 'agent_movement_animation.gif'
-  snapshots_output: 'simulation_snapshots.png'
+  network_visualization: './generatedFiles/network_visualization.png'
+  simulation_results: './generatedFiles/simulation_results.png'
+  animation_output: './generatedFiles/agent_movement_animation.gif'
+  snapshots_output: './generatedFiles/simulation_snapshots.png'
+  
+  # Plot output files
+  plots:
+    agent_distribution: './generatedFiles/agent_distribution.png'
+    battery_levels: './generatedFiles/battery_levels.png'
+    low_battery_agents: './generatedFiles/low_battery_agents.png'
+    charging_infrastructure: './generatedFiles/charging_infrastructure.png'
+    timeDuration: 72

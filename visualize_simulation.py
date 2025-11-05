@@ -9,13 +9,19 @@ import os
 agents_count = CONFIG['agent']['count']
 VIS_CONFIG = CONFIG['visualization']
 
-def visualize_network_and_stations():
-    """Create a visualization of the road network and charging stations"""
+def visualize_network_and_stations(use_locations_file: bool = True):
+    """
+    Create a visualization of the road network and charging stations
+    
+    Args:
+        use_locations_file (bool): If True, load agent locations from Locations.json if it exists.
+    """
     # Load the simulation
     sim = EVSimulation('roads.geojson', 'charging_points.geojson')
     
-    # Create agents to get home and office locations
-    sim.create_agents(agents_count)
+    # Create agents with optional locations file
+    locations_file = 'Locations.json' if use_locations_file and os.path.exists('Locations.json') else None
+    sim.create_agents(agents_count, locations_file=locations_file)
     
     # Create figure with subplots
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=VIS_CONFIG['network_figsize'])
@@ -111,8 +117,13 @@ def visualize_network_and_stations():
     plt.savefig(CONFIG['paths']['network_visualization'], dpi=300, bbox_inches='tight')
     plt.show()
 
-def run_and_visualize_simulation():
-    """Run simulation and create time-series visualizations"""
+def run_simulation_with_algorithm(algorithm_name, output_suffix=''):
+    """Run simulation with a specific allocation algorithm"""
+    # Set the allocation algorithm in config
+    original_algorithm = CONFIG['allocation']['algorithm']
+    CONFIG['allocation']['algorithm'] = algorithm_name
+    
+    # Create a copy of the simulation to avoid interference
     sim = EVSimulation('roads.geojson', 'charging_points.geojson')
     sim.create_agents(agents_count)
     
@@ -120,10 +131,10 @@ def run_and_visualize_simulation():
     time_data = []
     stats_data = []
     
-    duration_hours = 48
+    duration_hours = CONFIG['paths']['plots']['timeDuration']
     duration_minutes = duration_hours * 60
     
-    print("Running simulation for visualization...")
+    print(f"\nRunning simulation with {algorithm_name} allocation algorithm...")
     
     while sim.current_time < duration_minutes:
         sim.step()
@@ -134,9 +145,23 @@ def run_and_visualize_simulation():
             time_data.append(sim.current_time / 60)  # Convert to hours
             stats_data.append(stats)
     
-    # Create visualization
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=VIS_CONFIG['stats_figsize'])
+    # Generate output paths with algorithm suffix
+    output_paths = {}
+    for plot_name, path in CONFIG['paths']['plots'].items():
+        if plot_name != 'timeDuration':  # Skip timeDuration as it's not a file path
+            base, ext = os.path.splitext(path)
+            output_paths[plot_name] = f"{base}_{algorithm_name}{ext}"
     
+    # Create visualizations
+    create_visualizations(time_data, stats_data, output_paths, duration_hours)
+    
+    # Restore original algorithm
+    CONFIG['allocation']['algorithm'] = original_algorithm
+    
+    return sim
+
+def create_visualizations(time_data, stats_data, output_paths, duration_hours):
+    """Create visualization plots from simulation data"""
     # Extract data for plotting
     hours = time_data
     agents_home = [s['agents_at_home'] for s in stats_data]
@@ -149,69 +174,110 @@ def run_and_visualize_simulation():
     occupied_ports = [s['occupied_ports'] for s in stats_data]
     total_ports = [s['total_charging_ports'] for s in stats_data]
     
-    # Plot 1: Agent Locations
-    ax1.plot(hours, agents_home, label='At Home', marker='o', linewidth=2)
-    ax1.plot(hours, agents_office, label='At Office', marker='s', linewidth=2)
-    ax1.plot(hours, agents_commuting, label='Commuting', marker='^', linewidth=2)
-    ax1.plot(hours, agents_charging, label='Charging', marker='d', linewidth=2)
-    ax1.plot(hours, agents_waiting, label='Waiting to Charge', marker='x', linewidth=2)
+    # Ensure the output directory exists
+    os.makedirs(os.path.dirname(output_paths['agent_distribution']) or '.', exist_ok=True)
     
-    ax1.set_title('Agent Distribution Over Time')
-    ax1.set_xlabel('Time (Hours)')
-    ax1.set_ylabel('Number of Agents')
-    ax1.legend()
+    # Plot 1: Agent Locations
+    fig1, ax1 = plt.subplots(figsize=(12, 6))
+    ax1.plot(hours, agents_home, label='At Home', marker='o', linewidth=2, markersize=4)
+    ax1.plot(hours, agents_office, label='At Office', marker='s', linewidth=2, markersize=4)
+    ax1.plot(hours, agents_commuting, label='Commuting', marker='^', linewidth=2, markersize=4)
+    ax1.plot(hours, agents_charging, label='Charging', marker='d', linewidth=2, markersize=4)
+    ax1.plot(hours, agents_waiting, label='Waiting to Charge', marker='x', linewidth=2, markersize=4)
+    
+    ax1.set_title(f'Agent Distribution Over Time ({CONFIG["allocation"]["algorithm"]})', fontsize=12, pad=15)
+    ax1.set_xlabel('Time (Hours)', fontsize=10)
+    ax1.set_ylabel('Number of Agents', fontsize=10)
+    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     ax1.grid(True, alpha=0.3)
     ax1.set_xlim(0, duration_hours)
+    plt.tight_layout()
+    plt.savefig(output_paths['agent_distribution'], dpi=300, bbox_inches='tight')
+    plt.close(fig1)
     
     # Plot 2: Battery Levels
+    fig2, ax2 = plt.subplots(figsize=(12, 6))
     ax2.plot(hours, avg_battery, label='Average Battery', color='green', linewidth=3)
     ax2.axhline(y=30, color='red', linestyle='--', label='Low Battery Threshold')
     ax2.fill_between(hours, 0, 30, alpha=0.2, color='red', label='Critical Zone')
     
-    ax2.set_title('Average Battery Level Over Time')
-    ax2.set_xlabel('Time (Hours)')
-    ax2.set_ylabel('Battery Level (%)')
-    ax2.legend()
+    ax2.set_title(f'Average Battery Level Over Time ({CONFIG["allocation"]["algorithm"]})', fontsize=12, pad=15)
+    ax2.set_xlabel('Time (Hours)', fontsize=10)
+    ax2.set_ylabel('Battery Level (%)', fontsize=10)
+    ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     ax2.grid(True, alpha=0.3)
     ax2.set_xlim(0, duration_hours)
     ax2.set_ylim(0, 100)
-    
+    plt.tight_layout()
+    plt.savefig(output_paths['battery_levels'], dpi=300, bbox_inches='tight')
+    plt.close(fig2)
+
     # Plot 3: Low Battery Agents
+    fig3, ax3 = plt.subplots(figsize=(12, 6))
     ax3.bar(hours, low_battery, alpha=0.7, color='orange', width=0.8)
-    ax3.set_title('Agents with Low Battery (<30%)')
-    ax3.set_xlabel('Time (Hours)')
-    ax3.set_ylabel('Number of Agents')
-    ax3.grid(True, alpha=0.3)
+    ax3.set_title(f'Agents with Low Battery (<30%) ({CONFIG["allocation"]["algorithm"]})', fontsize=12, pad=15)
+    ax3.set_xlabel('Time (Hours)', fontsize=10)
+    ax3.set_ylabel('Number of Agents', fontsize=10)
+    ax3.grid(True, alpha=0.3, axis='y')
     ax3.set_xlim(0, duration_hours)
+    plt.tight_layout()
+    plt.savefig(output_paths['low_battery_agents'], dpi=300, bbox_inches='tight')
+    plt.close(fig3)
     
     # Plot 4: Charging Infrastructure Utilization
+    fig4, ax4 = plt.subplots(figsize=(12, 6))
     utilization = [occ/total * 100 if total > 0 else 0 for occ, total in zip(occupied_ports, total_ports)]
-    ax4.plot(hours, occupied_ports, label='Occupied Ports', marker='o', linewidth=2)
-    ax4.plot(hours, total_ports, label='Total Ports', linestyle='--', alpha=0.7)
-    ax4_twin = ax4.twinx()
-    ax4_twin.plot(hours, utilization, label='Utilization %', color='red', linewidth=2)
     
-    ax4.set_title('Charging Infrastructure Usage')
-    ax4.set_xlabel('Time (Hours)')
-    ax4.set_ylabel('Number of Ports')
-    ax4_twin.set_ylabel('Utilization (%)')
-    ax4.legend(loc='upper left')
-    ax4_twin.legend(loc='upper right')
+    # Plot primary y-axis (left)
+    color = 'tab:blue'
+    ax4.set_xlabel('Time (Hours)', fontsize=10)
+    ax4.set_ylabel('Number of Ports', color=color, fontsize=10)
+    ax4.plot(hours, occupied_ports, label='Occupied Ports', marker='o', linewidth=2, color=color, markersize=4)
+    ax4.plot(hours, total_ports, label='Total Ports', linestyle='--', alpha=0.7, color=color)
+    ax4.tick_params(axis='y', labelcolor=color)
+    
+    # Create secondary y-axis (right)
+    ax4_twin = ax4.twinx()
+    color = 'tab:red'
+    ax4_twin.set_ylabel('Utilization (%)', color=color, fontsize=10)
+    ax4_twin.plot(hours, utilization, label='Utilization %', color=color, linewidth=2, linestyle='-', alpha=0.7)
+    ax4_twin.tick_params(axis='y', labelcolor=color)
+    
+    # Set title and grid
+    ax4.set_title(f'Charging Infrastructure Usage ({CONFIG["allocation"]["algorithm"]})', fontsize=12, pad=15)
     ax4.grid(True, alpha=0.3)
     ax4.set_xlim(0, duration_hours)
     
-    plt.tight_layout()
-    plt.savefig(CONFIG['paths']['simulation_results'], dpi=300, bbox_inches='tight')
-    plt.show()
+    # Combine legends from both axes
+    lines1, labels1 = ax4.get_legend_handles_labels()
+    lines2, labels2 = ax4_twin.get_legend_handles_labels()
+    ax4.legend(lines1 + lines2, labels1 + labels2, bbox_to_anchor=(1.1, 1), loc='upper left')
     
-    # Print final statistics
-    print("\n=== Final Simulation Summary ===")
-    final_stats = stats_data[-1]
-    print(f"Total agents: {agents_count}")
-    print(f"Final average battery: {final_stats['avg_battery']:.1f}%")
-    print(f"Agents with low battery: {final_stats['low_battery_agents']}")
-    print(f"Peak charging port usage: {max(occupied_ports)}/{final_stats['total_charging_ports']}")
+    plt.tight_layout()
+    plt.savefig(output_paths['charging_infrastructure'], dpi=300, bbox_inches='tight')
+    plt.close(fig4)
+    
+    # Print summary statistics
+    print(f"\n=== {CONFIG['allocation']['algorithm']} Algorithm Summary ===")
+    print(f"Peak agents charging: {max(agents_charging)}")
+    print(f"Max agents waiting: {max(agents_waiting)}")
+    print(f"Peak low battery agents: {max(low_battery)}")
+    print(f"Peak charging port usage: {max(occupied_ports)}/{total_ports[0] if total_ports else 0}")
     print(f"Peak utilization: {max(utilization):.1f}%")
+    print("=" * 40)
+
+def run_and_visualize_simulation():
+    """Run simulation and create time-series visualizations with the selected algorithm(s)"""
+    algorithm = CONFIG['allocation']['algorithm']
+    
+    if algorithm.upper() == 'ALL':
+        # Run all algorithms
+        algorithms = ['nearest', 'queue_time', 'least_utilized', 'cost_based']
+        for algo in algorithms:
+            run_simulation_with_algorithm(algo)
+    else:
+        # Run with the specified algorithm
+        run_simulation_with_algorithm(algorithm, output_suffix='')
 
 if __name__ == "__main__":
     print("Creating network visualization...")

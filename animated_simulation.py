@@ -16,14 +16,31 @@ AGENT_CONFIG = CONFIG['agent']
 class AnimatedSimulation:
     """Create animated visualization of agent movement"""
     
-    def __init__(self, roads_file: str = None, charging_points_file: str = None, num_agents: int = None):
+    def __init__(self, roads_file: str = None, charging_points_file: str = None, 
+                 num_agents: int = None, locations_file: str = 'Locations.json'):
+        """
+        Initialize the animated simulation.
+        
+        Args:
+            roads_file (str, optional): Path to roads GeoJSON file. Uses config if None.
+            charging_points_file (str, optional): Path to charging points GeoJSON file. Uses config if None.
+            num_agents (int, optional): Number of agents. Uses config if None.
+            locations_file (str, optional): Path to JSON file with pre-defined agent locations. 
+                                         If None or file doesn't exist, generates random locations.
+        """
         # Use config values if not provided
         roads_file = roads_file or CONFIG['paths']['roads']
         charging_points_file = charging_points_file or CONFIG['paths']['charging_points']
         num_agents = num_agents or AGENT_CONFIG['count']
         
+        # Initialize simulation
         self.sim = EVSimulation(roads_file, charging_points_file)
-        self.sim.create_agents(num_agents)
+        
+        # Create agents, optionally using locations file
+        if locations_file and os.path.exists(locations_file):
+            self.sim.create_agents(num_agents, locations_file=locations_file)
+        else:
+            self.sim.create_agents(num_agents)
         
         # Store simulation snapshots
         self.snapshots = []
