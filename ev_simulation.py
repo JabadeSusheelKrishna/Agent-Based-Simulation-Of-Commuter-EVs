@@ -190,12 +190,39 @@ class EVAgent:
             dest_node = self.find_nearest_node(destination)
             
             if current_node is None or dest_node is None:
+                print(f"Warning: Could not find path from node {current_node} to {dest_node}")
                 return []
             
-            # Use NetworkX to find shortest path
-            path = nx.shortest_path(self.road_network, current_node, dest_node, weight='length')
-            return path
-        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            # Check if nodes are in the same connected component
+            if not nx.has_path(self.road_network, current_node, dest_node):
+                # Find which components the nodes are in
+                components = list(nx.connected_components(self.road_network))
+                current_comp = next((comp for comp in components if current_node in comp), None)
+                dest_comp = next((comp for comp in components if dest_node in comp), None)
+                
+                if current_comp and dest_comp and current_comp != dest_comp:
+                    print(f"Warning: No path exists between nodes {current_node} and {dest_node} "
+                          f"(they are in separate disconnected components)")
+                    print(f"Node {current_node} is in component with nodes: {sorted(current_comp)}")
+                    print(f"Node {dest_node} is in component with nodes: {sorted(dest_comp)}")
+                
+                return []
+            
+            try:
+                # Use NetworkX to find shortest path
+                path = nx.shortest_path(self.road_network, current_node, dest_node, weight='length')
+                print(f"Found path with {len(path)} nodes from {current_node} to {dest_node}")
+                return path
+            except nx.NetworkXNoPath:
+                print(f"No path found from node {current_node} to {dest_node}")
+                return []
+            except nx.NodeNotFound as e:
+                print(f"Node not found: {e}")
+                return []
+        except Exception as e:
+            print(f"Error finding path: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     def find_nearest_node(self, location: Location) -> Optional[int]:
@@ -268,6 +295,7 @@ class EVAgent:
     def move_along_path(self) -> bool:
         """Move agent along the current path based on speed and time step"""
         if not self.path or self.path_index >= len(self.path) - 1:
+            print(f"Agent {self.agent_id}: No path or reached destination")
             return False  # No path or reached destination
             
         # Get speed limit for the current road segment
@@ -284,6 +312,7 @@ class EVAgent:
             next_node = self.path[self.path_index + 1]
             
             if not self.road_network.has_edge(current_node, next_node):
+                print(f"Agent {self.agent_id}: No edge between {current_node} and {next_node}, skipping")
                 self.path_index += 1
                 continue
                 
@@ -311,6 +340,7 @@ class EVAgent:
                 # Update current location to the next node
                 node_data = self.road_network.nodes[next_node]
                 self.current_location = Location(node_data['y'], node_data['x'], next_node)
+                print(f"Agent {self.agent_id} moved to node {next_node} (battery: {self.current_battery:.1f}%)")
             else:
                 # Calculate intermediate position along the edge
                 ratio = self.partial_edge_progress / edge_length_km
@@ -358,8 +388,12 @@ class EVAgent:
             time_in_day >= morning_commute_start and 
             time_in_day < morning_commute_start + SIM_CONFIG['schedule']['morning_commute_window']):
             
+            print(f"Agent {self.agent_id} starting morning commute to office")
             self.destination = self.office
             self.path = self.find_path_to_destination(self.destination)
+            if not self.path:
+                print(f"Warning: Agent {self.agent_id} could not find path to office")
+                return
             self.path_index = 0
             self.state = "commuting_to_office"
         
@@ -368,35 +402,64 @@ class EVAgent:
               time_in_day >= evening_commute_start and 
               time_in_day < evening_commute_start + SIM_CONFIG['schedule']['evening_commute_window']):
             
+            print(f"Agent {self.agent_id} starting evening commute home")
             self.destination = self.home
             self.path = self.find_path_to_destination(self.destination)
+            if not self.path:
+                print(f"Warning: Agent {self.agent_id} could not find path home")
+                return
             self.path_index = 0
             self.state = "commuting_to_home"
         
         # Handle commuting states
         if self.state in ["commuting_to_office", "commuting_to_home"]:
+            # Check if we've reached the destination
+            if self.path_index >= len(self.path) - 1:
+                if self.state == "commuting_to_office":
+                    print(f"Agent {self.agent_id} reached office")
+                    self.state = "at_office"
+                    self.current_location = self.office
+                else:
+                    print(f"Agent {self.agent_id} reached home")
+                    self.state = "at_home"
+                    self.current_location = self.home
+                self.path = []
+                self.path_index = 0
+                return
+                
             # Check if needs charging
             if self.needs_charging():
+                print(f"Agent {self.agent_id} needs charging")
                 nearest_station = self.find_nearest_charging_station(charging_stations)
                 if nearest_station:
                     if nearest_station.is_available():
+                        print(f"Agent {self.agent_id} starting to charge at {nearest_station.name}")
                         nearest_station.start_charging(self, current_time_minutes)
                     else:
+                        print(f"Agent {self.agent_id} waiting to charge at {nearest_station.name}")
                         nearest_station.add_to_queue(self)
                         self.state = "waiting_to_charge"
+                else:
+                    print(f"Agent {self.agent_id} needs charging but no stations available")
                 return
             
             # Continue moving along path
             if self.path:
                 moved = self.move_along_path()
-                if not moved or self.path_index >= len(self.path) - 1:
-                    # Reached destination
-                    if self.destination == self.office:
-                        self.state = "at_office"
-                    else:
-                        self.state = "at_home"
-                    self.path = []
+                if not moved:
+                    print(f"Agent {self.agent_id} could not move along path, retrying pathfinding")
+                    self.path = self.find_path_to_destination(self.destination)
                     self.path_index = 0
+                    if not self.path:
+                        print(f"Agent {self.agent_id} could not find a new path, giving up")
+                        if self.state == "commuting_to_office":
+                            self.state = "at_office"
+                            self.current_location = self.office
+                        else:
+                            self.state = "at_home"
+                            self.current_location = self.home
+                        self.path = []
+                        self.path_index = 0
     
     def find_nearest_charging_station(self, charging_stations: List[ChargingStation], 
                                    road_network: Any = None) -> Optional[ChargingStation]:

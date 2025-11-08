@@ -19,6 +19,16 @@ def visualize_network_and_stations(use_locations_file: bool = True):
     # Load the simulation
     sim = EVSimulation('roads.geojson', 'charging_points.geojson')
     
+    # Check for disconnected components
+    components = list(nx.connected_components(sim.road_network))
+    if len(components) > 1:
+        print(f"Warning: Road network has {len(components)} disconnected components")
+        print("Only the largest component will be used for visualization.")
+        # Get the largest component
+        largest_component = max(components, key=len)
+        # Create a subgraph with only the largest component
+        sim.road_network = sim.road_network.subgraph(largest_component).copy()
+    
     # Create agents with optional locations file
     locations_file = 'Locations.json' if use_locations_file and os.path.exists('Locations.json') else None
     sim.create_agents(agents_count, locations_file=locations_file)

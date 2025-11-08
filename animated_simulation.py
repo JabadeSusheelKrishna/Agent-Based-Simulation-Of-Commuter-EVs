@@ -442,11 +442,12 @@ def main():
         
         # Run simulation and capture data
         # Use fixed capture interval from config
+        capture_interval = SIM_CONFIG['capture_interval_minutes']
         print(f"Using capture interval of {capture_interval} minutes for {days} day(s)")
         
         anim_sim.run_simulation_and_capture(
             duration_days=days,
-            capture_interval=SIM_CONFIG['capture_interval_minutes']
+            capture_interval=capture_interval
         )
         
         # Create animation with config values

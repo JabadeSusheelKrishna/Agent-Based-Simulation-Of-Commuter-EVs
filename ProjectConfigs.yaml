@@ -3,22 +3,22 @@
 
 # Agent Configuration
 agent:
-  count: 50  # Default number of agents in the simulation
+  count: 1  # Default number of agents in the simulation
   battery:
     capacity: 100.0  # kWh
     low_threshold: 30.0  # %
     initial_min: 20.0  # %
     initial_max: 80.0  # %
-  consumption_rate: 25.0  # kWh per km
+  consumption_rate: 10.0  # kWh per km
   charging_rate: 30.0  # kWh per hour (fast charging)
   speed: 25.0  # km/h (average speed)
   schedule_offset_min: 0  # minutes
-  schedule_offset_max: 60  # minutes
+  schedule_offset_max: 0  # minutes
   
   # Agent state colors for visualization
   colors:
-    at_home: 'lightgreen'
-    at_office: 'lightblue'
+    at_home: 'green'
+    at_office: 'blue'
     commuting: 'yellow'
     charging: 'purple'
     waiting: 'orange'
@@ -32,7 +32,7 @@ allocation:
   # - 'least_utilized': Prefers stations with more available ports
   # - 'cost_based': Considers charging cost, distance, and utilization
   # - 'ALL': Run all algorithms for comparison
-  algorithm: 'ALL'  # Default algorithm
+  algorithm: 'nearest'  # Default algorithm
   
   # Algorithm-specific parameters
   parameters:
@@ -50,19 +50,20 @@ allocation:
 
 # Simulation Configuration
 simulation:
-  step_minutes: 30  # Simulation time step in minutes
-  duration_days: 3  # Default simulation duration in days
+  step_minutes: 10  # Simulation time step in minutes
+  duration_days: 1  # Default simulation duration in days
+  capture_interval_minutes: 30  # Time interval for capturing simulation states for animation
   
   # Time windows for commuting (in minutes from midnight)
   schedule:
     morning_commute_start: 480  # 8:00 AM
-    morning_commute_window: 120  # 2-hour window
+    morning_commute_window: 500  # max time to start
     evening_commute_start: 1020  # 5:00 PM
-    evening_commute_window: 120  # 2-hour window
+    evening_commute_window: 1040  # max time to start
 
 # Charging Station Configuration
 charging_station:
-  default_ports: 2  # Default number of charging ports per station
+  default_ports: 1  # Default number of charging ports per station
   
   # Charging behavior
   min_charging_time: 60  # minutes
@@ -97,8 +98,8 @@ visualization:
   office_alpha: 0.8
   
   # Animation settings
-  animation_interval: 800  # ms between frames
-  animation_fps: 5  # Frames per second for saved GIF
+  animation_interval: 10  # ms between frames
+  animation_fps: 1  # Frames per second for saved GIF
   
   # Static snapshots
   snapshot_times: [360, 540, 720, 1080, 1260]  # Times in minutes (6AM, 9AM, 12PM, 6PM, 9PM)
@@ -119,4 +120,4 @@ paths:
     battery_levels: './generatedFiles/battery_levels.png'
     low_battery_agents: './generatedFiles/low_battery_agents.png'
     charging_infrastructure: './generatedFiles/charging_infrastructure.png'
-    timeDuration: 72
+    timeDuration: 24
