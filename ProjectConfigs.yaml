@@ -3,7 +3,7 @@
 
 # Agent Configuration
 agent:
-  count: 1  # Default number of agents in the simulation
+  count: 2  # Default number of agents in the simulation
   battery:
     capacity: 100.0  # kWh
     low_threshold: 30.0  # %
