@@ -98,7 +98,7 @@ visualization:
   office_alpha: 0.8
   
   # Animation settings
-  animation_interval: 10  # ms between frames
+  animation_interval: 100  # ms between frames
   animation_fps: 1  # Frames per second for saved GIF
   
   # Static snapshots

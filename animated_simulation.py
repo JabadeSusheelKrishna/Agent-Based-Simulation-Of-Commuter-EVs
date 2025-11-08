@@ -145,39 +145,76 @@ class AnimatedSimulation:
         print(f"Capturing snapshots every {capture_interval} minutes...")
         
         snapshot_count = 0
+        last_capture_time = -capture_interval  # Ensure first capture happens at t=0
+        
+        # Store the previous positions of all agents
+        prev_positions = {}
+        
         while self.sim.current_time < duration_minutes:
-            # Capture snapshot at intervals
-            if self.sim.current_time % capture_interval == 0:
-                snapshot = self.capture_snapshot()
+            # Store positions before the step
+            prev_positions = {agent.agent_id: (agent.current_location.lon, agent.current_location.lat) 
+                            for agent in self.sim.agents}
+            
+            # Take a simulation step
+            self.sim.step()
+            
+            # Check if we should capture a snapshot
+            time_since_last_capture = self.sim.current_time - last_capture_time
+            
+            # Always capture a snapshot at the end of the simulation
+            if time_since_last_capture >= capture_interval or self.sim.current_time + self.sim.simulation_speed >= duration_minutes:
+                # Capture the snapshot
+                snapshot = self.capture_snapshot(prev_positions)
                 self.snapshots.append(snapshot)
                 self.time_labels.append(self.sim.current_time)
                 snapshot_count += 1
+                last_capture_time = self.sim.current_time
                 
-                if snapshot_count % 20 == 0:  # Print less frequently for longer simulations
+                # Print progress
+                if snapshot_count % 20 == 0 or self.sim.current_time + self.sim.simulation_speed >= duration_minutes:
                     day = self.sim.current_time // (24 * 60) + 1
                     hours = (self.sim.current_time % (24 * 60)) // 60
                     minutes = self.sim.current_time % 60
                     print(f"  Day {day}, {hours:02d}:{minutes:02d} - Captured {snapshot_count} snapshots")
-            
-            self.sim.step()
         
         print(f"Simulation complete! Captured {len(self.snapshots)} snapshots over {duration_days} day(s).")
     
-    def capture_snapshot(self):
-        """Capture current state of all agents"""
+    def capture_snapshot(self, prev_positions=None):
+        """Capture current state of all agents
+        
+        Args:
+            prev_positions: Dictionary mapping agent_id to (x, y) position from previous step
+        """
         snapshot = {
             'time': self.sim.current_time,
-            'agents': []
+            'agents': [],
+            'sim_step': self.sim.simulation_speed
         }
         
         for agent in self.sim.agents:
+            # Get current position
+            current_x = agent.current_location.lon
+            current_y = agent.current_location.lat
+            
+            # Calculate movement vector if previous position is available
+            dx, dy = 0, 0
+            if prev_positions and agent.agent_id in prev_positions:
+                prev_x, prev_y = prev_positions[agent.agent_id]
+                dx = current_x - prev_x
+                dy = current_y - prev_y
+            
             agent_data = {
                 'id': agent.agent_id,
-                'x': agent.current_location.lon,
-                'y': agent.current_location.lat,
+                'x': current_x,
+                'y': current_y,
+                'dx': dx,  # x movement since last snapshot
+                'dy': dy,  # y movement since last snapshot
                 'battery': agent.current_battery,
                 'state': agent.state,
-                'needs_charging': agent.needs_charging()
+                'needs_charging': agent.needs_charging(),
+                'path': getattr(agent, 'path', []),  # Current path if available
+                'path_index': getattr(agent, 'path_index', 0),  # Current path index if available
+                'destination': agent.destination.lon if hasattr(agent, 'destination') and agent.destination else None
             }
             snapshot['agents'].append(agent_data)
         
@@ -185,25 +222,67 @@ class AnimatedSimulation:
         snapshot['charging_stats'] = {
             'occupied_ports': sum(s.occupied_ports for s in self.sim.charging_stations),
             'total_ports': sum(s.max_ports for s in self.sim.charging_stations),
-            'queue_lengths': [len(s.queue) for s in self.sim.charging_stations]
+            'queue_lengths': [len(s.queue) for s in self.sim.charging_stations],
+            'station_locations': [{
+                'x': station.location.lon,
+                'y': station.location.lat,
+                'occupied': station.occupied_ports,
+                'max_ports': station.max_ports,
+                'queue_length': len(station.queue)
+            } for station in self.sim.charging_stations]
         }
         
         return snapshot
     
     def animate_frame(self, frame_idx):
-        """Animation function for each frame"""
+        """Animation function for each frame with smooth interpolation
+        
+        Args:
+            frame_idx: Index of the current frame
+            
+        Returns:
+            tuple: Updated artists for the animation
+        """
         if frame_idx >= len(self.snapshots):
             return self.agent_scatter, self.time_text, self.info_text
         
         snapshot = self.snapshots[frame_idx]
         
-        # Extract agent positions and states
-        agent_x = [agent['x'] for agent in snapshot['agents']]
-        agent_y = [agent['y'] for agent in snapshot['agents']]
+        # Calculate interpolation factor based on frame rate and simulation step
+        if frame_idx > 0:
+            prev_time = self.snapshots[frame_idx - 1]['time']
+            current_time = snapshot['time']
+            time_elapsed = current_time - prev_time
+            
+            # If we have movement data, use it for smooth interpolation
+            if time_elapsed > 0 and 'sim_step' in snapshot:
+                # Calculate how far we are into the current time step (0 to 1)
+                interp_factor = min(1.0, (frame_idx % (time_elapsed // snapshot['sim_step'])) / 
+                                  (time_elapsed / snapshot['sim_step']))
+            else:
+                interp_factor = 0.0
+        else:
+            interp_factor = 0.0
         
-        # Color agents based on their state and battery level
+        # Extract and interpolate agent positions
+        agent_x = []
+        agent_y = []
         colors = []
+        
         for agent in snapshot['agents']:
+            # Calculate interpolated position
+            if interp_factor > 0 and 'dx' in agent and 'dy' in agent:
+                # Move from previous position to current position
+                x = agent['x'] - agent['dx'] * (1 - interp_factor)
+                y = agent['y'] - agent['dy'] * (1 - interp_factor)
+            else:
+                x = agent['x']
+                y = agent['y']
+                
+            agent_x.append(x)
+            agent_y.append(y)
+            
+            # Color agents based on their state and battery level
             if agent['state'] == 'charging':
                 colors.append('purple')  # Charging
             elif agent['state'] == 'waiting_to_charge':
@@ -221,6 +300,42 @@ class AnimatedSimulation:
         if agent_x and agent_y:
             self.agent_scatter.set_offsets(np.column_stack((agent_x, agent_y)))
             self.agent_scatter.set_color(colors)
+        
+        # Update charging station visualization
+        if 'charging_stats' in snapshot and 'station_locations' in snapshot['charging_stats']:
+            # Remove previous station markers if they exist
+            if hasattr(self, 'station_markers'):
+                for marker in self.station_markers:
+                    marker.remove()
+            
+            self.station_markers = []
+            
+            # Draw charging stations with queue information
+            for station in snapshot['charging_stats']['station_locations']:
+                # Draw station
+                marker = self.ax.scatter(
+                    station['x'], station['y'],
+                    s=VIS_CONFIG['station_size'],
+                    c='red' if station['occupied'] > 0 else 'lightgray',
+                    marker=VIS_CONFIG['station_marker'],
+                    zorder=3,
+                    edgecolors='black',
+                    alpha=0.8
+                )
+                self.station_markers.append(marker)
+                
+                # Show queue length if there is one
+                if station['queue_length'] > 0:
+                    queue_text = self.ax.text(
+                        station['x'], station['y'], 
+                        str(station['queue_length']),
+                        color='white',
+                        ha='center', va='center',
+                        fontsize=8,
+                        fontweight='bold',
+                        bbox=dict(facecolor='red', alpha=0.7, boxstyle='circle')
+                    )
+                    self.station_markers.append(queue_text)
         
         # Update time display with day information
         total_minutes = snapshot['time']
