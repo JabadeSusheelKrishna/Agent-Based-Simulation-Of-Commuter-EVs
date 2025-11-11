@@ -122,12 +122,26 @@ class Agent:
         self.home_location = home_location
         self.office_location = office_location
         self.current_position = home_location
-        self.current_battery_percentage = random.uniform(30, 40)
+        self.initial_battery_percentage = random.uniform(30, 40)
+        self.current_battery_percentage = self.initial_battery_percentage
         self.battery_capacity = battery_capacity
         self.energy_consumption_rate = energy_consumption_rate
         self.battery_threshold = random.uniform(25, 30)
         self.morning_offset = random.randint(-30, 30)
         self.evening_offset = random.randint(-30, 30)
+        self.current_state = AgentState.AT_HOME
+        self.current_target = None
+        self.previous_target = None
+        self.current_path = []
+        self.path_index = 0
+        self.speed = 0
+        self.total_distance_traveled = 0
+        self.charging_start_time = None
+    
+    def reset_state(self):
+        """Reset agent to initial state for a new simulation run"""
+        self.current_position = self.home_location
+        self.current_battery_percentage = self.initial_battery_percentage
         self.current_state = AgentState.AT_HOME
         self.current_target = None
         self.previous_target = None
@@ -205,14 +219,21 @@ class ChargingStation:
             'charging_agents': self.charging_agents[:],
             'waiting_agents': self.waiting_queue[:]
         }
+    
+    def reset_state(self):
+        """Reset charging station to initial state for a new simulation run"""
+        self.available_ports = self.total_ports
+        self.charging_agents = []
+        self.waiting_queue = []
 
 # ===== MAIN SIMULATION CLASS =====
 class EVSimulation:
     def __init__(self, roads_file: str, charging_stations_file: str, num_agents: int = 3,
-                 allocation_strategy: str = 'nearest'):
+                 allocation_strategy: str = 'nearest', agents: List[Agent] = None,
+                 charging_stations: List[ChargingStation] = None):
         self.road_network = RoadNetwork()
-        self.agents = []
-        self.charging_stations = []
+        self.agents = agents if agents is not None else []
+        self.charging_stations = charging_stations if charging_stations is not None else []
         self.num_agents = num_agents
         # Allocation strategy for choosing charging stations when agent needs charging.
         # Options: 'nearest' (default), 'queue_distance' (considers queue length and distance),
@@ -233,8 +254,10 @@ class EVSimulation:
         
         # Load data
         self.load_road_network(roads_file)
-        self.load_charging_stations(charging_stations_file)
-        self.initialize_agents()
+        if charging_stations is None:
+            self.load_charging_stations(charging_stations_file)
+        if agents is None:
+            self.initialize_agents()
     
     def load_road_network(self, filename: str):
         """Load road network from GeoJSON file"""
@@ -384,6 +407,13 @@ class EVSimulation:
             return self.find_random_charging_station(current_position)
         else:
             return self.find_nearest_charging_station(current_position)
+    
+    def reset_for_simulation(self):
+        """Reset all agents and charging stations for a new simulation run"""
+        for agent in self.agents:
+            agent.reset_state()
+        for station in self.charging_stations:
+            station.reset_state()
     
     def run(self) -> List[Dict]:
         """Run the simulation"""
@@ -538,89 +568,74 @@ class EVSimulation:
 
 # ===== MAIN EXECUTION =====
 if __name__ == "__main__":
-    # Run the simulation
-    # To change charging-station allocation, set allocation_strategy to one of:
-    #  - 'nearest'        : choose nearest station (default)
-    #  - 'queue_distance' : balance queue length and distance
-    #  - 'random'         : randomly choose any station that can accept the agent
-    # Example: allocation_strategy='queue_distance'
-    sim = EVSimulation(
+    # Initialize once with agents and charging stations
+    print("=== INITIALIZING SIMULATION INFRASTRUCTURE ===\n")
+    
+    # Create a temporary simulation instance to initialize agents and charging stations
+    temp_sim = EVSimulation(
         roads_file='data/roads.geojson',
         charging_stations_file='data/charging_points.geojson',
         num_agents=20,
-        allocation_strategy='nearest'
+        allocation_strategy='nearest'  # Temporary strategy
     )
     
-    results = sim.run()
-    sim.save_results(results)
+    # Extract the initialized agents and charging stations
+    shared_agents = temp_sim.agents
+    shared_charging_stations = temp_sim.charging_stations
+    shared_road_network = temp_sim.road_network
     
-    # Print summary statistics
-    print("\n=== SIMULATION SUMMARY ===")
-    final_timestep = results[-1]
+    print(f"\nInitialized {len(shared_agents)} agents and {len(shared_charging_stations)} charging stations")
+    print("All three simulations will use the same initialization for fair comparison.\n")
     
-    print(f"\nAgent Status at End:")
-    for agent_data in final_timestep['agents']:
-        print(f"Agent {agent_data['id']}: {agent_data['state']} "
-              f"(Battery: {agent_data['battery_percentage']}%, "
-              f"Distance: {agent_data['distance_traveled']} km)")
+    # Define the three strategies to test
+    strategies = ['nearest', 'queue_distance', 'random']
+    output_files = ['simulation_output.json', 'simulation_data2.json', 'simulation_data3.json']
     
-    print(f"\nCharging Station Status:")
-    for station_data in final_timestep['charging_stations']:
-        print(f"Station {station_data['id']}: "
-              f"{station_data['charging_count']} charging, "
-              f"{station_data['waiting_count']} waiting")
+    results_dict = {}
+    
+    for strategy, output_file in zip(strategies, output_files):
+        print(f"\n{'='*60}")
+        print(f"Running simulation with '{strategy}' strategy")
+        print(f"{'='*60}\n")
         
+        # Reset agents and charging stations before each simulation
+        for agent in shared_agents:
+            agent.reset_state()
+        for station in shared_charging_stations:
+            station.reset_state()
+        
+        # Create simulation instance with shared agents and charging stations
+        sim = EVSimulation(
+            roads_file='data/roads.geojson',
+            charging_stations_file='data/charging_points.geojson',
+            num_agents=20,
+            allocation_strategy=strategy,
+            agents=shared_agents,
+            charging_stations=shared_charging_stations
+        )
+        
+        results = sim.run()
+        sim.save_results(results, filename=output_file)
+        results_dict[strategy] = results
+        
+        # Print summary statistics
+        print(f"\n=== SIMULATION SUMMARY ({strategy}) ===")
+        final_timestep = results[-1]
+        
+        print(f"\nAgent Status at End:")
+        for agent_data in final_timestep['agents']:
+            print(f"Agent {agent_data['id']}: {agent_data['state']} "
+                  f"(Battery: {agent_data['battery_percentage']}%, "
+                  f"Distance: {agent_data['distance_traveled']} km)")
+        
+        print(f"\nCharging Station Status:")
+        for station_data in final_timestep['charging_stations']:
+            print(f"Station {station_data['id']}: "
+                  f"{station_data['charging_count']} charging, "
+                  f"{station_data['waiting_count']} waiting")
     
-    sim2 = EVSimulation(
-        roads_file='data/roads.geojson',
-        charging_stations_file='data/charging_points.geojson',
-        num_agents=20,
-        allocation_strategy='queue_distance'
-    )
-    
-    results2 = sim2.run()
-    sim2.save_results(results2,filename="simulation_data2.json")
-    
-    # Print summary statistics
-    print("\n=== SIMULATION SUMMARY ===")
-    final_timestep = results2[-1]
-    
-    print(f"\nAgent Status at End:")
-    for agent_data in final_timestep['agents']:
-        print(f"Agent {agent_data['id']}: {agent_data['state']} "
-              f"(Battery: {agent_data['battery_percentage']}%, "
-              f"Distance: {agent_data['distance_traveled']} km)")
-    
-    print(f"\nCharging Station Status:")
-    for station_data in final_timestep['charging_stations']:
-        print(f"Station {station_data['id']}: "
-              f"{station_data['charging_count']} charging, "
-              f"{station_data['waiting_count']} waiting")
-
-    sim3 = EVSimulation(
-        roads_file='data/roads.geojson',
-        charging_stations_file='data/charging_points.geojson',
-        num_agents=20,
-        allocation_strategy='random'
-    )
-    
-    results3 = sim3.run()
-    sim3.save_results(results2,filename="simulation_data3.json")
-    
-    # Print summary statistics
-    print("\n=== SIMULATION SUMMARY ===")
-    final_timestep = results3[-1]
-    
-    print(f"\nAgent Status at End:")
-    for agent_data in final_timestep['agents']:
-        print(f"Agent {agent_data['id']}: {agent_data['state']} "
-              f"(Battery: {agent_data['battery_percentage']}%, "
-              f"Distance: {agent_data['distance_traveled']} km)")
-    
-    print(f"\nCharging Station Status:")
-    for station_data in final_timestep['charging_stations']:
-        print(f"Station {station_data['id']}: "
-              f"{station_data['charging_count']} charging, "
-              f"{station_data['waiting_count']} waiting")
+    print(f"\n{'='*60}")
+    print("All simulations completed!")
+    print(f"{'='*60}")
 
     
