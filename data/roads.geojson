@@ -1,0 +1,388 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "name": "Main Street",
+        "type": "primary",
+        "oneway": false,
+        "lanes": 2,
+        "u": 1,
+        "v": 2,
+        "length": 200,
+        "speed_kph": 40
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.1025,
+            28.7041
+          ],
+          [
+            77.104,
+            28.7042
+          ],
+          [
+            77.106,
+            28.7045
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "name": "Main Street",
+        "type": "primary",
+        "oneway": false,
+        "lanes": 2,
+        "u": 2,
+        "v": 3,
+        "length": 300,
+        "speed_kph": 40
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.106,
+            28.7045
+          ],
+          [
+            77.108,
+            28.7047
+          ],
+          [
+            77.11,
+            28.7048
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "name": "Main Street",
+        "type": "primary",
+        "oneway": false,
+        "lanes": 2,
+        "u": 3,
+        "v": 4,
+        "length": 250,
+        "speed_kph": 40
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.11,
+            28.7048
+          ],
+          [
+            77.112,
+            28.705
+          ],
+          [
+            77.114,
+            28.7052
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "name": "First Avenue",
+        "type": "secondary",
+        "oneway": false,
+        "lanes": 2,
+        "u": 2,
+        "v": 5,
+        "length": 400,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.106,
+            28.7045
+          ],
+          [
+            77.1061,
+            28.706
+          ],
+          [
+            77.1062,
+            28.708
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "name": "Second Avenue",
+        "type": "secondary",
+        "oneway": false,
+        "lanes": 2,
+        "u": 3,
+        "v": 6,
+        "length": 450,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.11,
+            28.7048
+          ],
+          [
+            77.1102,
+            28.709
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "maxspeed": "20",
+        "name": "Park Road",
+        "type": "tertiary",
+        "oneway": false,
+        "lanes": 1,
+        "u": 7,
+        "v": 8,
+        "length": 457.66472444411966,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.1062,
+            28.708
+          ],
+          [
+            77.108,
+            28.7085
+          ],
+          [
+            77.1102,
+            28.709
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "maxspeed": "20",
+        "name": "Market Street",
+        "type": "primary",
+        "oneway": false,
+        "lanes": 2,
+        "u": 9,
+        "v": 10,
+        "length": 446.2144775767276,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.114,
+            28.7052
+          ],
+          [
+            77.118,
+            28.7056
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "maxspeed": "20",
+        "name": "Third Avenue",
+        "type": "secondary",
+        "oneway": false,
+        "lanes": 2,
+        "u": 11,
+        "v": 12,
+        "length": 433.4688570126371,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.118,
+            28.7056
+          ],
+          [
+            77.1182,
+            28.7095
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "highway": "residential",
+        "maxspeed": "20",
+        "name": "Lake View Road",
+        "type": "tertiary",
+        "oneway": false,
+        "lanes": 1,
+        "u": 13,
+        "v": 14,
+        "length": 889.7326845739183,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.1102,
+            28.709
+          ],
+          [
+            77.114,
+            28.71
+          ],
+          [
+            77.1182,
+            28.7095
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 15,
+        "highway": "residential",
+        "name": "Connector Road 15",
+        "type": "residential",
+        "oneway": false,
+        "lanes": 1,
+        "u": 8,
+        "v": 6,
+        "length": 0,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.1102,
+            28.709
+          ],
+          [
+            77.1102,
+            28.709
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 16,
+        "highway": "residential",
+        "name": "Connector Road 16",
+        "type": "residential",
+        "oneway": false,
+        "lanes": 1,
+        "u": 9,
+        "v": 4,
+        "length": 0,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.114,
+            28.7052
+          ],
+          [
+            77.114,
+            28.7052
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 17,
+        "highway": "residential",
+        "name": "Connector Road 17",
+        "type": "residential",
+        "oneway": false,
+        "lanes": 1,
+        "u": 11,
+        "v": 10,
+        "length": 0,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.118,
+            28.7056
+          ],
+          [
+            77.118,
+            28.7056
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 18,
+        "highway": "residential",
+        "name": "Connector Road 18",
+        "type": "residential",
+        "oneway": false,
+        "lanes": 1,
+        "u": 13,
+        "v": 6,
+        "length": 0,
+        "speed_kph": 30
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.1102,
+            28.709
+          ],
+          [
+            77.1102,
+            28.709
+          ]
+        ]
+      }
+    }
+  ]
+}

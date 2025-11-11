@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Downtown Charging",
+        "operator": "ChargePoint",
+        "ports": 1,
+        "port_types": ["CCS", "Type 2"],
+        "available_ports": 1,
+        "max_power_kw": 50,
+        "fee": "paid"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [77.106,28.7045]
+      }
+    }
+  ]
+}
