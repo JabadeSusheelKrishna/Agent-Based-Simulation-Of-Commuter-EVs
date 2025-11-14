@@ -570,7 +570,7 @@ if __name__ == "__main__":
         sim = EVSimulation(
             roads_file='data/roads.geojson',
             charging_stations_file='data/charging_points.geojson',
-            num_agents=2,
+            num_agents=5,
             num_days=7,
             allocation_method=method
         )
