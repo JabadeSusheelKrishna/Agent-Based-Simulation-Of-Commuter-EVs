@@ -1,0 +1,305 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 0,
+        "type": "home",
+        "node_id": 13
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1102,
+          28.709
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 0,
+        "type": "office",
+        "node_id": 3
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.11,
+          28.7048
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 0,
+        "type": "shop",
+        "node_id": 12
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1182,
+          28.7095
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 0,
+        "type": "restaurant",
+        "node_id": 5
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1062,
+          28.708
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 1,
+        "type": "home",
+        "node_id": 2
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.106,
+          28.7045
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 1,
+        "type": "office",
+        "node_id": 14
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1182,
+          28.7095
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 1,
+        "type": "shop",
+        "node_id": 12
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1182,
+          28.7095
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 1,
+        "type": "restaurant",
+        "node_id": 3
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.11,
+          28.7048
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 2,
+        "type": "home",
+        "node_id": 11
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.118,
+          28.7056
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 2,
+        "type": "office",
+        "node_id": 12
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1182,
+          28.7095
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 2,
+        "type": "shop",
+        "node_id": 13
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1102,
+          28.709
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 2,
+        "type": "restaurant",
+        "node_id": 3
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.11,
+          28.7048
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 3,
+        "type": "home",
+        "node_id": 7
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1062,
+          28.708
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 3,
+        "type": "office",
+        "node_id": 3
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.11,
+          28.7048
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 3,
+        "type": "shop",
+        "node_id": 4
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.114,
+          28.7052
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 3,
+        "type": "restaurant",
+        "node_id": 13
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1102,
+          28.709
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 4,
+        "type": "home",
+        "node_id": 1
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1025,
+          28.7041
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 4,
+        "type": "office",
+        "node_id": 11
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.118,
+          28.7056
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 4,
+        "type": "shop",
+        "node_id": 9
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.114,
+          28.7052
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "agent_id": 4,
+        "type": "restaurant",
+        "node_id": 4
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.114,
+          28.7052
+        ]
+      }
+    }
+  ]
+}
