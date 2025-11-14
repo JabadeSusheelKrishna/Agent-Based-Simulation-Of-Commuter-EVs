@@ -12,7 +12,7 @@ agents = gpd.read_file("../agent_locations.geojson")
 
 
 # --- New Jitter Function ---
-def jitter_points(gdf, amount=0.0001):
+def jitter_points(gdf, amount=0.001):
     """
     Adds a small, random offset (jitter) to the coordinates of a GeoDataFrame.
     The 'amount' controls the magnitude of the jitter.
@@ -37,14 +37,14 @@ def jitter_points(gdf, amount=0.0001):
 # --- Apply Jitter ONLY to the Agents Data (where overlap is an issue) ---
 # Choose an appropriate jitter amount. A smaller number (like 0.0001) is often
 # good for coordinate systems like WGS84 (lat/lon).
-JITTER_AMOUNT = 0.00015
+JITTER_AMOUNT = 0.00055
 agents_jittered = jitter_points(agents.copy(), amount=JITTER_AMOUNT)
 
 # --- Create the plot (Your original code structure, but using agents_jittered) ---
 fig, ax = plt.subplots(figsize=(12, 10))
 
 # Plot the road network
-roads.plot(ax=ax, color='lightgray', linewidth=0.8, label='Roads')
+roads.plot(ax=ax, color='black', linewidth=1.5, label='Roads')
 
 # Plot charging stations
 charging_points.plot(ax=ax, color='red', marker='^', markersize=90, label='Charging Stations', zorder=5)
@@ -73,7 +73,7 @@ plt.xlabel("Longitude")
 plt.ylabel("Latitude")
 
 # Add legend
-plt.legend(title="Map Legend", loc='upper right', fontsize=10, title_fontsize=11)
+plt.legend(title="Map Legend", loc='upper left', fontsize=10, title_fontsize=11)
 
 # Optional: grid and styling
 plt.grid(True, linestyle='--', alpha=0.4)
